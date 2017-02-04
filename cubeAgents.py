@@ -60,12 +60,11 @@ def bfs():
         if curState not in visited:
             visited.append(curState)
 
-        if ncube.isSolved():
-            return curActions
-
         for newAction in successorActions:
             ncube.destructVectorState(list(curState))
             ncube.minimalInterpreter(newAction)
+            if ncube.isSolved():
+                return curActions+ [newAction]
             newState = tuple(ncube.constructVectorState())
             fringe.push((newState, curActions + [newAction]))
 
