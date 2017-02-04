@@ -25,16 +25,16 @@ class Queue:
 
 def bfs():
     ncube = cube.Cube(order=3)
-    successorActions=['r','l','f','b','u','d']
-    axisChange=['x','y','z']
-    
+    successorActionsNorm=['r','l','f','b','u','d']
+    successorActionsInv=['.r','.l','.f','.b','.u','.d']
+    successorActions = successorActionsInv + successorActionsNorm
     scramble= []
-    for _ in range(500):
-        scramble.append(random.choice(successorActions+axisChange))
+    for _ in range(5):
+        scramble.append(random.choice(successorActions))
     print("SCRAMBLED SEQUENCE:")
     print(scramble)
     for action in scramble:
-        _, _ = ncube.minimalInterpreter(action, (False, 0))
+        ncube.minimalInterpreter(action)
     print("INITIAL CUBE STATE:")
     print(ncube.constructVectorState())
     ncube.displayCube(isColor=True)
@@ -65,7 +65,7 @@ def bfs():
 
         for newAction in successorActions:
             ncube.destructVectorState(list(curState))
-            _,_ = ncube.minimalInterpreter(newAction,(False, 0))
+            ncube.minimalInterpreter(newAction)
             newState = tuple(ncube.constructVectorState())
             fringe.push((newState, curActions + [newAction]))
 
@@ -76,7 +76,7 @@ def bfs():
 
 def agentChoice(choice):
     if choice == 0:
-        bfs()
+        print(bfs())
 
 if __name__ == "__main__":
     agentChoice(0)

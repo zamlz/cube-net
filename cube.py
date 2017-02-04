@@ -285,28 +285,29 @@ class Cube:
             self.rotateAlongAxis(axis='x', inverse=True)
 
 
-    def minimalInterpreter(self, cmdString, invlay):
-        inv ,lay = invlay
+    def minimalInterpreter(self, cmdString):
+        inv = False
+        lay = 0
         for command in cmdString:
             if command is '.':
                 inv = not inv
             elif command.isdigit():
                 lay = min(max(int(command)-1,0),self.order - 1)
-                # print(lay)
             elif command in ['x','y','z']:
                 self.rotateAlongAxis(command, inv)
+                inv = False
+                lay = 0
             elif command in Cube.faceDict.keys():
-                # print(lay,inv)
                 self.rotateFaceReal(face=Cube.faceDict[command],layer=lay,inverse=inv)
-        return inv, lay
+                inv = False
+                lay = 0
 
     def client(self, isColor=False):
-        invlay = (False, 0)
         while True:
             clearScreen()
             self.displayCube(isColor=isColor)
             userString = str(input("\n---> "))
-            invlay = self.minimalInterpreter(userString, invlay)
+            self.minimalInterpreter(userString)
             print(self.constructVectorState(inBits=True)) 
 
     def constructVectorState(self, inBits=False):
