@@ -29,7 +29,7 @@ def bfs():
     successorActionsInv=['.r','.l','.f','.b','.u','.d']
     successorActions = successorActionsInv + successorActionsNorm
     scramble= []
-    for _ in range(5):
+    for _ in range(4):
         scramble.append(random.choice(successorActions))
     print("SCRAMBLED SEQUENCE:")
     print(scramble)
