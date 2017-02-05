@@ -119,7 +119,7 @@ def FFNN(_X, _weights, _biases, _keep_prob):
     layer_1 = x_1
     x_2 = tf.nn.relu(tf.add(tf.matmul(layer_1, _weights['h2']), _biases['b2']))
     layer_2 = x_2
-    x_2 = tf.nn.reul(tf.add(tf.matmul(layer_2, _weights['h3']), _biases['b3']))
+    x_2 = tf.nn.relu(tf.add(tf.matmul(layer_2, _weights['h3']), _biases['b3']))
     layer_3 = tf.nn.dropout(x_3, _keep_prob)
     return (tf.matmul(layer_3, _weights['out']) + _biases['out'])
 
