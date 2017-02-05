@@ -81,9 +81,11 @@ def ncubeCreateBatch(batch_size):
 
 def generateRandomScramble(size=0):
     if size != 0:
-        max_scramble = size
+        max_scramble_size = size
+    else:
+        max_scramble_size = max_scramble
     scramble = []
-    scramble_size = random.choice(range(max_scramble)) + 1
+    scramble_size = random.choice(range(max_scramble_size)) + 1
     for _ in range(scramble_size):
         scramble.append(random.choice(list(actionVector.keys())))
     if len(scramble) > 1:
@@ -177,7 +179,7 @@ for epoch in range(training_epochs):
     # Each Batch is a unique randomly generated sequence
     # from the rubiks cube
     for i in range(training_batches):
-        batch_x, batch_y = ncubeCreateBatch(batch_size):
+        batch_x, batch_y = ncubeCreateBatch(batch_size)
         sess.run(optm, feed_dict={x: batch_x, y: batch_y, dropout_keep_prob: 0.6})
         avg_cost+=sess.run(cost,feed_dict={x:batch_x, y:batch_y, dropout_keep_prob: 1.0})
     avg_cost = avg_cost / training_batches
@@ -202,7 +204,7 @@ for epoch in range(training_epochs):
                 print("SOLVED in %03d moves!!!" % (i))
                 break
             cubeState = np.array(ncube.constructVectorState(inBits=True))
-            result = sess.run(pred, feed_dict{x:cubeState, dropout_keep_prob:1.0})
+            result = sess.run(pred, feed_dict={x:cubeState, dropout_keep_prob:1.0})
             ncube.minimalInterpreter(vectorToAction[result])
 
 print("Optimization Done!")
