@@ -107,9 +107,9 @@ def cleanUpScramble(scramble):
 
 # Define Network Topolgy
 n_input = len(ncube.constructVectorState(inBits=True))
-n_hidden_1 = 64
-n_hidden_2 = 64
-n_hidden_3 = 32
+n_hidden_1 = 512
+n_hidden_2 = 512
+n_hidden_3 = 256
 n_output = 12     # There are only 12 possible actions.
 
 
@@ -163,8 +163,9 @@ print("CUBENET FEED FORWARD NEURAL NETWORK IS READY.")
 training_epochs = 20
 training_batches = 500
 batch_size = 100
-display_step = 4
+display_step = 5
 test_data_size = 500
+solvable_limit = 100
 
 # Launch the tensorflow session
 sess = tf.Session()
@@ -179,6 +180,7 @@ for epoch in range(training_epochs):
     # Each Batch is a unique randomly generated sequence
     # from the rubiks cube
     for i in range(training_batches):
+        #print("Batch: %03d" % i)
         batch_x, batch_y = ncubeCreateBatch(batch_size)
         sess.run(optm, feed_dict={x: batch_x, y: batch_y, dropout_keep_prob: 0.6})
         avg_cost+=sess.run(cost,feed_dict={x:batch_x, y:batch_y, dropout_keep_prob: 1.0})
@@ -199,12 +201,18 @@ for epoch in range(training_epochs):
         for action in scramble:
             ncube.minimalInterpreter(action)
         ncube.displayCube(isColor=True)
-        for i in range(200):
+        actionList = []
+        for i in range(solvable_limit):
             if ncube.isSolved():
                 print("SOLVED in %03d moves!!!" % (i))
                 break
-            cubeState = np.array(ncube.constructVectorState(inBits=True))
+            vectorState = []
+            vectorState.append(ncube.constructVectorState(inBits=True))
+            cubeState = np.array(vectorState, dtype='float32')
             result = sess.run(pred, feed_dict={x:cubeState, dropout_keep_prob:1.0})
-            ncube.minimalInterpreter(vectorToAction[result])
+            actionList.append(vectorToAction[list(result)[0]])
+            ncube.minimalInterpreter(actionList[-1])
+        print("ActionList: ", actionList)
+        ncube.displayCube(isColor=True)
 
 print("Optimization Done!")
