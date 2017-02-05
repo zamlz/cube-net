@@ -57,25 +57,25 @@ def ncubeCreateBatch(batch_size):
     for _ in range(batch_size):
         ncube = cube.Cube(order=orderNum)
         scramble = []
-        scramble_size = random.choice(max_scramble) + 1
+        scramble_size = random.choice(range(max_scramble)) + 1
         for _ in range(scramble_size):
-            scramble.append(random.choice(actionVector.keys()))
+            scramble.append(random.choice(list(actionVector.keys())))
         if len(scramble) > 1:
             scramble = cleanUpScramble(scramble)
         if scramble == []:
-            scramble.append(random.choice(actionVector.keys()))
+            scramble.append(random.choice(list(actionVector.keys())))
         for action in scramble:
             ncube.minimalInterpreter(action)
         x_batch.append(ncube.constructVectorState(inBits=True))
         y_batch.append(actionVector[scramble[-1]])
 
-    return np.array(x_batch), np.array(y_batch)
+    return np.array(x_batch,dtype='float32'), np.array(y_batch,dtype='float32')
 
 
 def cleanUpScramble(scramble):
     i = 0
     while i < (len(scramble) - 1):
-        if inverseAction[scramble[i]] == scramble[i+1]:
+        if actionInverse[scramble[i]] == scramble[i+1]:
             del(scramble[i+1])
             del(scramble[i])
         else:
@@ -119,7 +119,7 @@ def FFNN(_X, _weights, _biases, _keep_prob):
     layer_1 = x_1
     x_2 = tf.nn.relu(tf.add(tf.matmul(layer_1, _weights['h2']), _biases['b2']))
     layer_2 = x_2
-    x_2 = tf.nn.relu(tf.add(tf.matmul(layer_2, _weights['h3']), _biases['b3']))
+    x_3 = tf.nn.relu(tf.add(tf.matmul(layer_2, _weights['h3']), _biases['b3']))
     layer_3 = tf.nn.dropout(x_3, _keep_prob)
     return (tf.matmul(layer_3, _weights['out']) + _biases['out'])
 
