@@ -14,23 +14,74 @@ import tensorflow as tf
 import numpy as np 
 
 # Create a nxn Cube
-ncube = cube.Cube(order=2)
+orderNum = 2
+ncube = cube.Cube(order=orderNum)
 
 # Create the inverse Dictionary
 actionInverse = {
-    'r' : '.r'
-    'l' :' .l'
-    'u' : '.u'
-    'd' : '.d'
-    'f' : '.f'
-    'b' : '.b'
-    '.r': 'r'
-    '.l':' l'
-    '.u': 'u'
-    '.d': 'd'
-    '.f': 'f'
-    '.b': 'b'
+    'r' : '.r',
+    'l' :' .l',
+    'u' : '.u',
+    'd' : '.d',
+    'f' : '.f',
+    'b' : '.b',
+    '.r': 'r',
+    '.l':' l',
+    '.u': 'u',
+    '.d': 'd',
+    '.f': 'f',
+    '.b': 'b',
 }
+
+actionVector={
+    'r' : [1,0,0,0,0,0,0,0,0,0,0,0],
+    'l' : [0,1,0,0,0,0,0,0,0,0,0,0],
+    'u' : [0,0,1,0,0,0,0,0,0,0,0,0],
+    'd' : [0,0,0,1,0,0,0,0,0,0,0,0],
+    'f' : [0,0,0,0,1,0,0,0,0,0,0,0],
+    'b' : [0,0,0,0,0,1,0,0,0,0,0,0],
+    '.r': [0,0,0,0,0,0,1,0,0,0,0,0],
+    '.l': [0,0,0,0,0,0,0,1,0,0,0,0],
+    '.u': [0,0,0,0,0,0,0,0,1,0,0,0],
+    '.d': [0,0,0,0,0,0,0,0,0,1,0,0],
+    '.f': [0,0,0,0,0,0,0,0,0,0,1,0],
+    '.b': [0,0,0,0,0,0,0,0,0,0,0,1],
+}
+
+# Scrable Parameters
+max_scramble = 6
+
+def ncubeCreateBatch(batch_size):
+    x_batch=[]
+    y_batch=[]
+    for _ in range(batch_size):
+        ncube = cube.Cube(order=orderNum)
+        scramble = []
+        scramble_size = random.choice(max_scramble) + 1
+        for _ in range(scramble_size):
+            scramble.append(random.choice(actionVector.keys()))
+        if len(scramble) > 1:
+            scramble = cleanUpScramble(scramble)
+        if scramble == []:
+            scramble.append(random.choice(actionVector.keys()))
+        for action in scramble:
+            ncube.minimalInterpreter(action)
+        x_batch.append(ncube.constructVectorState(inBits=True))
+        y_batch.append(actionVector[scramble[-1]])
+
+    return np.array(x_batch), np.array(y_batch)
+
+
+def cleanUpScramble(scramble):
+    i = 0
+    while i < (len(scramble) - 1):
+        if inverseAction[scramble[i]] == scramble[i+1]:
+            del(scramble[i+1])
+            del(scramble[i])
+        else:
+            i+=1
+    return scramble
+
 
 # Define Network Topolgy
 n_input = len(ncube.constructVectorState(inBits=True))
