@@ -249,7 +249,7 @@ for epoch in range(training_epochs):
     # Each Batch is a unique randomly generated sequence
     # from the rubiks cube
     for i in range(training_batches):
-        print(i)
+        #print(i)
         batch_x, batch_y = ncubeCreateBatch(batch_size)
         sess.run(optm, feed_dict={x: batch_x, y: batch_y, dropout_keep_prob: 0.6})
         avg_cost+=sess.run(cost,feed_dict={x:batch_x, y:batch_y, dropout_keep_prob: 1.0})
