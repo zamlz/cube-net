@@ -14,6 +14,9 @@ import tensorflow as tf
 import numpy as np 
 import os
 
+# Possible Values: FNN, CNN, RNN
+NETWORK_TYPE = 'CNN'
+
 # Create a nxn Cube
 orderNum = 2
 ncube = cube.Cube(order=orderNum)
@@ -167,10 +170,15 @@ n_output = 12     # There are only 12 possible actions.
 # Create the input and output variables
 x = tf.placeholder("float", [None, n_input])
 y = tf.placeholder("float", [None, n_output])
-dropout_keep_prob = tf.placeholder("float")
+keepratio = tf.placeholder(tf.float32)
+p_keep_conv = tf.placeholder(tf.float32)
+p_keep_hidden = tf.placeholder(tf.float32)
 
 
-# network Parameters
+#
+#   FEED FORWARD STUFF TYPICAL NEURAL NETWORK
+#
+# network Parameters For 
 stddev = 0.05
 weights = {
     'h1': tf.Variable(tf.random_normal([n_input, n_hidden_1], stddev=stddev)),
@@ -197,19 +205,81 @@ def FFNN(_X, _weights, _biases, _keep_prob):
     return (tf.matmul(layer_3, _weights['out']) + _biases['out'])
 
 
+#
+#   CONVOLUTIONAL NEURAL NETWORK STFF
+#
+
+weights_cnn  = {
+    'wc1': tf.Variable(tf.truncated_normal([3, 3, 1, 32], stddev=0.1)),
+    'wc2': tf.Variable(tf.truncated_normal([3, 3, 32, 64], stddev=0.1)),
+    'wc3': tf.Variable(tf.truncated_normal([3, 3, 63, 128 ], stddev=0.1)),
+    'wc4': tf.Variable(tf.truncated_normal([128 * 4*4, 625], stddev=0.1)),
+    'wo' : tf.Variable(tf.truncated_normal([1024, n_output], stddev=0.1))
+}
+
+def CONV(_input, _w, p_keep_conv, p_keep_hidden):
+    X = tf.reshape(_input, shape=[-1, 12, 12, 1])
+    w = _w['wc1']
+    w2 = _w['wc2']
+    w3 = _w['wc3']
+    w4 = _w['wc4']
+    w_o = _w['wo']
+
+    l1a = tf.nn.relu(tf.nn.conv2d(X, w,                       # l1a shape=(?, 12, 12, 32)
+                        strides=[1, 1, 1, 1], padding='SAME'))
+    l1 = tf.nn.max_pool(l1a, ksize=[1, 2, 2, 1],              # l1 shape=(?, 14, 14, 32)
+                        strides=[1, 2, 2, 1], padding='SAME')
+    l1 = tf.nn.dropout(l1, p_keep_conv)
+
+    l2a = tf.nn.relu(tf.nn.conv2d(l1, w2,                     # l2a shape=(?, 14, 14, 64)
+                        strides=[1, 1, 1, 1], padding='SAME'))
+    l2 = tf.nn.max_pool(l2a, ksize=[1, 2, 2, 1],              # l2 shape=(?, 7, 7, 64)
+                        strides=[1, 2, 2, 1], padding='SAME')
+    l2 = tf.nn.dropout(l2, p_keep_conv)
+
+    l3a = tf.nn.relu(tf.nn.conv2d(l2, w3,                     # l3a shape=(?, 7, 7, 128)
+                        strides=[1, 1, 1, 1], padding='SAME'))
+    l3 = tf.nn.max_pool(l3a, ksize=[1, 2, 2, 1],              # l3 shape=(?, 4, 4, 128)
+                        strides=[1, 2, 2, 1], padding='SAME')
+    l3 = tf.reshape(l3, [-1, w4.get_shape().as_list()[0]])    # reshape to (?, 2048)
+    l3 = tf.nn.dropout(l3, p_keep_conv)
+
+    l4 = tf.nn.relu(tf.matmul(l3, w4))
+    l4 = tf.nn.dropout(l4, p_keep_hidden)
+
+    pyx = tf.matmul(l4, w_o)
+    return pyx 
+
+
 # Lets party
-model = FFNN(x, weights, biases, dropout_keep_prob)
+
+# Model 
+if NETWORK_TYPE is 'FNN':
+    model = FFNN(x, weights, biases, keepratio)
+elif NETWORK_TYPE is 'CNN':
+    model = CONV(x, weights_cnn, p_keep_conv, p_keep_hidden)
+
+# Cost Type
 cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(model, y))
-optm = tf.train.AdamOptimizer(learning_rate=0.001).minimize(cost)
+
+# Optimizer
+if NETWORK_TYPE is 'FNN':
+    optm = tf.train.AdamOptimizer(learning_rate=0.001).minimize(cost)
+else:
+    optm = tf.train.RMSPropOptimizer(0.001,0.9).minimize(cost)
+
+# Correcion
 corr = tf.equal(tf.argmax(model, 1), tf.argmax(y, 1))
+# Accuracy
 accr = tf.reduce_mean(tf.cast(corr, "float"))
+# Prediction
 pred = tf.argmax(model, 1)
 
 
 # Initialize everything up to this point
 init = tf.initialize_all_variables()
 #init = tf.global_variables_initializer()
-print("CUBENET FEED FORWARD NEURAL NETWORK IS READY.")
+print("CUBENET NEURAL NETWORK IS READY.")
 
 
 # Define the training parameters
@@ -233,7 +303,10 @@ if not os.path.exists(ckpt_dir):
 
 
 # Launch the tensorflow session
-sess = tf.Session()
+if NETWORK_TYPE is 'FNN':
+    sess = tf.Session()
+elif NETWORK_TYPE is 'CNN':
+    sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
 sess.run(init)
 
 
@@ -249,8 +322,16 @@ for epoch in range(training_epochs):
     for i in range(training_batches):
         #print(i)
         batch_x, batch_y = ncubeCreateBatch(batch_size)
-        sess.run(optm, feed_dict={x: batch_x, y: batch_y, dropout_keep_prob: 0.6})
-        avg_cost+=sess.run(cost,feed_dict={x:batch_x, y:batch_y, dropout_keep_prob: 1.0})
+        if NETWORK_TYPE is 'FNN':
+            dictTemp = {x: batch_x, y: batch_y, keepratio: 0.6}
+        elif NETWORK_TYPE is 'CNN':
+            dictTemp = {x:batch_x, y:batch_y, p_keep_conv:0.8, p_keep_hidden:0.5}
+        sess.run(optm, feed_dict=dictTemp)
+        if NETWORK_TYPE is 'FNN':
+            dictTemp = {x: batch_x, y: batch_y, keepratio: 1.0}
+        elif NETWORK_TYPE is 'CNN':
+            dictTemp = {x:batch_x, y:batch_y, p_keep_conv:1.0, p_keep_hidden:1.0}
+        avg_cost+=sess.run(cost,feed_dict=dictTemp)
     avg_cost = avg_cost / training_batches
 
     
@@ -264,7 +345,11 @@ for epoch in range(training_epochs):
         
         # Test Data Stats
         test_x, test_y = ncubeCreateBatch(test_data_size)
-        test_acc = sess.run(accr, feed_dict={x:test_x,y:test_y,dropout_keep_prob:1.0})
+        if NETWORK_TYPE is 'FNN':
+            dictTemp = {x: test_x, y: test_y, keepratio: 1.0}
+        elif NETWORK_TYPE is 'CNN':
+            dictTemp = {x:test_x, y:test_y, p_keep_conv:1.0, p_keep_hidden:1.0}
+        test_acc = sess.run(accr, feed_dict=dictTemp)
         print("Test Accuracy: %.3f" % (test_acc))
         
         # Solving stats:
@@ -303,7 +388,11 @@ for epoch in range(training_epochs):
                 vectorState.append(ncube.constructVectorState(inBits=True))
                 cubeState = np.array(vectorState, dtype='float32')
                 # Apply the model
-                result = sess.run(pred, feed_dict={x:cubeState, dropout_keep_prob:1.0})
+                if NETWORK_TYPE is 'FNN':
+                    dictTemp = {x:cubeState, keepratio:1.0}
+                elif NETWORK_TYPE is 'CNN':
+                    dictTemp = {x:cubeState, p_keep_conv:1.0, p_keep_hidden:1.0}
+                result = sess.run(pred, feed_dict=dictTemp)
                 # Apply the result to the cube and save it
                 actionList.append(vectorToAction[list(result)[0]])
                 ncube.minimalInterpreter(actionList[-1])
