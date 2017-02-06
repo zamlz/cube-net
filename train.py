@@ -209,8 +209,8 @@ pred = tf.argmax(model, 1)
 
 
 # Initialize everything up to this point
-#init = tf.initialize_all_variables()
-init = tf.global_variables_initializer()
+init = tf.initialize_all_variables()
+#init = tf.global_variables_initializer()
 print("CUBENET FEED FORWARD NEURAL NETWORK IS READY.")
 
 
