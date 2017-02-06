@@ -75,7 +75,7 @@ def ncubeCreateBatch(batch_size):
         for action in scramble:
             ncube.minimalInterpreter(action)
         x_batch.append(ncube.constructVectorState(inBits=True))
-        y_batch.append(actionVector[scramble[-1]])
+        y_batch.append(actionVector[actionInverse[scramble[-1]]])
 
     return np.array(x_batch,dtype='float32'), np.array(y_batch,dtype='float32')
 
