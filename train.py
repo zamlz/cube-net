@@ -173,6 +173,7 @@ sess.run(init)
 
 
 # Start the training
+print("\nTRAINING HAS BEGUN...\n")
 for epoch in range(training_epochs):
     avg_cost = 0.0
 
@@ -180,16 +181,17 @@ for epoch in range(training_epochs):
     # Each Batch is a unique randomly generated sequence
     # from the rubiks cube
     for i in range(training_batches):
-        #print("Batch: %03d" % i)
+        # if (i + 1) % 100 == 0: print("Batch: %03d" % (i+1))
         batch_x, batch_y = ncubeCreateBatch(batch_size)
         sess.run(optm, feed_dict={x: batch_x, y: batch_y, dropout_keep_prob: 0.6})
         avg_cost+=sess.run(cost,feed_dict={x:batch_x, y:batch_y, dropout_keep_prob: 1.0})
     avg_cost = avg_cost / training_batches
     
+    print("\n\nEPOCH: %03d" % (epoch+1))
     if (epoch + 1) % display_step == 0:
         # Epoch Stats
         print("----------------------------------------------------------------")
-        print("Epoch: %03d/%03d cost: %.9f" % (epoch, training_epochs, avg_cost))
+        print("Epoch: %03d/%03d cost: %.9f" % (epoch+1, training_epochs, avg_cost))
         # Test Data Stats
         test_x, test_y = ncubeCreateBatch(test_data_size)
         test_acc = sess.run(accr, feed_dict={x:test_x,y:test_y,dropout_keep_prob:1.0})
