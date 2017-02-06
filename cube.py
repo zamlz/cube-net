@@ -312,12 +312,32 @@ class Cube:
 
     def constructVectorState(self, inBits=False):
         vector = []
+        tileDict = {}
         faces = [self.front, self.back, self.right, self.left, self.up, self.down]
+        bitValue = 1
         for face in faces:
             for faceRow in face:
                 for faceTile in faceRow:
                     if inBits:
-                        vector.extend(Cube.tileDict[faceTile])
+                        if faceTile in list(tileDict.keys()):
+                            vector.extend(tileDict[faceTile])
+                        else:
+                            temp = []
+                            if 32 & bitValue: temp.append(1) 
+                            else: temp.append(0)
+                            if 16 & bitValue: temp.append(1) 
+                            else: temp.append(0)
+                            if 8 & bitValue: temp.append(1) 
+                            else: temp.append(0)
+                            if 4 & bitValue: temp.append(1) 
+                            else: temp.append(0)
+                            if 2 & bitValue: temp.append(1) 
+                            else: temp.append(0)
+                            if 1 & bitValue: temp.append(1) 
+                            else: temp.append(0)
+                            bitValue*=2
+                            tileDict[faceTile] = temp
+                            vector.extend(tileDict[faceTile])
                     else:
                         vector.append(faceTile.split()[0])
         return vector
