@@ -155,9 +155,9 @@ def cleanUpScrambleOrderTwo(scramble):
 
 # Define Network Topolgy
 n_input = len(ncube.constructVectorState(inBits=True))
-n_hidden_1 = n_input
-n_hidden_2 = 48
-n_hidden_3 = 24
+n_hidden_1 = 512
+n_hidden_2 = 512
+n_hidden_3 = 256
 n_output = 12     # There are only 12 possible actions.
 
 
