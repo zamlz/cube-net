@@ -89,7 +89,7 @@ vectorToAction={
 
 # A small collection of gods number
 numGod ={
-    2:11,
+    2:7,
     3:20,
 }
 
@@ -98,9 +98,12 @@ numGod ={
 def ncubeCreateBatch(batch_size):
     x_batch=[]
     y_batch=[]
-    for _ in range(batch_size):
+    for cur_batch in range(batch_size):
         ncube = cube.Cube(order=orderNum)
-        scramble = generateRandomScramble(scramble_size=numGod[orderNum])
+        if cur_batch > (batch_size/3.0):
+            scramble = generateRandomScramble(scramble_size=numGod[orderNum],allowRandomSize=False)
+        else:        
+            scramble = generateRandomScramble(scramble_size=numGod[orderNum])
         for action in scramble:
             ncube.minimalInterpreter(action)
         x_batch.append(ncube.constructVectorState(inBits=True))
@@ -155,7 +158,7 @@ def cleanUpScrambleOrderTwo(scramble):
 
 # Define Network Topolgy
 n_input = len(ncube.constructVectorState(inBits=True))
-n_hidden_1 = 512
+n_hidden_1 = 1024
 n_hidden_2 = 512
 n_hidden_3 = 256
 n_output = 12     # There are only 12 possible actions.
@@ -210,16 +213,16 @@ print("CUBENET FEED FORWARD NEURAL NETWORK IS READY.")
 
 
 # Define the training parameters
-training_epochs = 500
-training_batches = 100
-batch_size = 500
+training_epochs = 20
+training_batches = 500
+batch_size = 100
 # Verification Paramters
 display_step = 1
 test_data_size = 1000
 # Solving Paramters
-total_solv_trials = 250
-solvable_limit = 200
-solvable_step = 50
+total_solv_trials = 100
+solvable_limit = 50
+solvable_step = 10
 
 
 # Create the Saver Object and directory to save in
@@ -271,8 +274,11 @@ for epoch in range(training_epochs):
             
             # We must generate Larger scrambles here to emulate
             # a real world scramble
-            scramble = generateRandomScramble(scramble_size=numGod[orderNum],
-                                              allowRandomSize=False)
+            if solv_index > (total_solv_trials/3.0):
+                scramble = generateRandomScramble(scramble_size=numGod[orderNum],
+                                                  allowRandomSize=False)
+            else:
+                scramble = generateRandomScramble(scramble_size=numGod[orderNum])
             for action in scramble:
                 ncube.minimalInterpreter(action)
             
