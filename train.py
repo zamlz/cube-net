@@ -89,7 +89,7 @@ vectorToAction={
 
 # A small collection of gods number
 numGod ={
-    2:14,
+    2:11,
     3:20,
 }
 
@@ -155,10 +155,9 @@ def cleanUpScrambleOrderTwo(scramble):
 
 # Define Network Topolgy
 n_input = len(ncube.constructVectorState(inBits=True))
-n_hidden_1 = 512
-n_hidden_2 = 512
-n_hidden_3 = 256
-n_hidden_4 = 128
+n_hidden_1 = n_input
+n_hidden_2 = 48
+n_hidden_3 = 24
 n_output = 12     # There are only 12 possible actions.
 
 
@@ -174,14 +173,12 @@ weights = {
     'h1': tf.Variable(tf.random_normal([n_input, n_hidden_1], stddev=stddev)),
     'h2': tf.Variable(tf.random_normal([n_hidden_1, n_hidden_2], stddev=stddev)),
     'h3': tf.Variable(tf.random_normal([n_hidden_2, n_hidden_3], stddev=stddev)),
-    'h4': tf.Variable(tf.random_normal([n_hidden_3, n_hidden_4], stddev=stddev)),
-    'out': tf.Variable(tf.random_normal([n_hidden_4, n_output], stddev=stddev))
+    'out': tf.Variable(tf.random_normal([n_hidden_3, n_output], stddev=stddev))
 }
 biases = {
     'b1': tf.Variable(tf.random_normal([n_hidden_1])),
     'b2': tf.Variable(tf.random_normal([n_hidden_2])),
     'b3': tf.Variable(tf.random_normal([n_hidden_3])),
-    'b4': tf.Variable(tf.random_normal([n_hidden_4])),
     'out': tf.Variable(tf.random_normal([n_output]))
 }
 
@@ -193,10 +190,8 @@ def FFNN(_X, _weights, _biases, _keep_prob):
     x_2 = tf.nn.relu(tf.add(tf.matmul(layer_1, _weights['h2']), _biases['b2']))
     layer_2 = x_2
     x_3 = tf.nn.relu(tf.add(tf.matmul(layer_2, _weights['h3']), _biases['b3']))
-    layer_3 = x_3
-    x_4 = tf.nn.relu(tf.add(tf.matmul(layer_3, _weights['h4']), _biases['b4']))
-    layer_4 = tf.nn.dropout(x_4, _keep_prob)
-    return (tf.matmul(layer_4, _weights['out']) + _biases['out'])
+    layer_3 = tf.nn.dropout(x_3, _keep_prob)
+    return (tf.matmul(layer_3, _weights['out']) + _biases['out'])
 
 
 # Lets party
@@ -215,15 +210,15 @@ print("CUBENET FEED FORWARD NEURAL NETWORK IS READY.")
 
 
 # Define the training parameters
-training_epochs = 100
-training_batches = 500
+training_epochs = 500
+training_batches = 100
 batch_size = 500
 # Verification Paramters
 display_step = 1
 test_data_size = 1000
 # Solving Paramters
-total_solv_trials = 500
-solvable_limit = 100
+total_solv_trials = 250
+solvable_limit = 200
 solvable_step = 50
 
 
@@ -255,13 +250,13 @@ for epoch in range(training_epochs):
         avg_cost+=sess.run(cost,feed_dict={x:batch_x, y:batch_y, dropout_keep_prob: 1.0})
     avg_cost = avg_cost / training_batches
 
-    print("EPOCH: %03d" % (epoch+1))
+    
     
     # Display details of the epoch at certain intervals
     if (epoch + 1) % display_step == 0:
         
         # Epoch Stats
-        print("----------------------------------------------------------------")
+        print("\n----------------------------------------------------------------")
         print("Epoch: %03d/%03d cost: %.9f" % (epoch+1, training_epochs, avg_cost))
         
         # Test Data Stats
@@ -283,6 +278,7 @@ for epoch in range(training_epochs):
             
             # Display the cetain scrambled cubes
             if (solv_index+1) % solvable_step == 0:
+                print("Trial: ", solv_index)
                 print("Scramble: ", scramble)
                 ncube.displayCube(isColor=True)
             
@@ -312,8 +308,9 @@ for epoch in range(training_epochs):
                 ncube.displayCube(isColor=True)
 
         # What were the solve results?
-        print("Practical Test: %.3f" % (solv_count/(total_solv_trials*1.0)))
-
+        print("Practical Test: %03d/%03d -> %.3f" % (solv_count, total_solv_trials, solv_count/(total_solv_trials*1.0)))
+    else:
+        print("\nEPOCH: %03d" % (epoch+1))
 
 # Save the model
 save_path = saver.save(sess, ckpt_dir+"/model.ckpt")
