@@ -20,13 +20,13 @@ ncube = cube.Cube(order=orderNum)
 # Create the inverse Dictionary
 actionInverse = {
     'r' : '.r',
-    'l' :' .l',
+    'l' : '.l',
     'u' : '.u',
     'd' : '.d',
     'f' : '.f',
     'b' : '.b',
     '.r': 'r',
-    '.l':' l',
+    '.l': 'l',
     '.u': 'u',
     '.d': 'd',
     '.f': 'f',
