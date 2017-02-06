@@ -162,10 +162,11 @@ print("CUBENET FEED FORWARD NEURAL NETWORK IS READY.")
 # Define the training parameters
 training_epochs = 20
 training_batches = 500
-batch_size = 100
-display_step = 5
+batch_size = 200
+display_step = 1
 test_data_size = 500
 solvable_limit = 100
+solvable_step = 5
 
 # Launch the tensorflow session
 sess = tf.Session()
@@ -203,7 +204,7 @@ for epoch in range(training_epochs):
             scramble = generateRandomScramble(size=max_scramble)
             for action in scramble:
                 ncube.minimalInterpreter(action)
-            if (solv_index+1) % 50 == 0:
+            if (solv_index+1) % solvable_step == 0:
                 print("Scramble: ", scramble)
                 ncube.displayCube(isColor=True)
             actionList = []
@@ -217,7 +218,7 @@ for epoch in range(training_epochs):
                 result = sess.run(pred, feed_dict={x:cubeState, dropout_keep_prob:1.0})
                 actionList.append(vectorToAction[list(result)[0]])
                 ncube.minimalInterpreter(actionList[-1])
-            if (solv_index+1) % 50 == 0:
+            if (solv_index+1) % solvable_step == 0:
                 print("ActionList: ", actionList)
                 ncube.displayCube(isColor=True)
         print("Practical Test: %.3f" % (solv_count/50.0))
