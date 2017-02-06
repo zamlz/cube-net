@@ -197,24 +197,29 @@ for epoch in range(training_epochs):
         test_acc = sess.run(accr, feed_dict={x:test_x,y:test_y,dropout_keep_prob:1.0})
         print("Test Accuracy: %.3f" % (test_acc))
         # Solving stats:
-        ncube = cube.Cube(order=orderNum)
-        scramble = generateRandomScramble(size=max_scramble)
-        print("Scramble: ", scramble)
-        for action in scramble:
-            ncube.minimalInterpreter(action)
-        ncube.displayCube(isColor=True)
-        actionList = []
-        for i in range(solvable_limit):
-            if ncube.isSolved():
-                print("SOLVED in %03d moves!!!" % (i))
-                break
-            vectorState = []
-            vectorState.append(ncube.constructVectorState(inBits=True))
-            cubeState = np.array(vectorState, dtype='float32')
-            result = sess.run(pred, feed_dict={x:cubeState, dropout_keep_prob:1.0})
-            actionList.append(vectorToAction[list(result)[0]])
-            ncube.minimalInterpreter(actionList[-1])
-        print("ActionList: ", actionList)
-        ncube.displayCube(isColor=True)
-
+        solv_count = 0
+        for solv_index in range(50): 
+            ncube = cube.Cube(order=orderNum)
+            scramble = generateRandomScramble(size=max_scramble)
+            for action in scramble:
+                ncube.minimalInterpreter(action)
+            if (solv_index+1) % 50 == 0:
+                print("Scramble: ", scramble)
+                ncube.displayCube(isColor=True)
+            actionList = []
+            for i in range(solvable_limit):
+                if ncube.isSolved():
+                    solv_count+=1
+                    break
+                vectorState = []
+                vectorState.append(ncube.constructVectorState(inBits=True))
+                cubeState = np.array(vectorState, dtype='float32')
+                result = sess.run(pred, feed_dict={x:cubeState, dropout_keep_prob:1.0})
+                actionList.append(vectorToAction[list(result)[0]])
+                ncube.minimalInterpreter(actionList[-1])
+            if (solv_index+1) % 50 == 0:
+                print("ActionList: ", actionList)
+                ncube.displayCube(isColor=True)
+        print("Practical Test: %.3f" % (solv_count/50.0))
+        
 print("Optimization Done!")
