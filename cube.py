@@ -255,7 +255,7 @@ class Cube:
         if layer >= self.order:
             print("Layer Value Out of Bounds")
 
-        if layer == 1:
+        if layer == 0:
             self.__rotateFace(face=face,
                               dir=('ClkWise' if not inverse else 'CntrClkWise'))
 
