@@ -93,7 +93,7 @@ vectorToAction={
 # A small collection of gods number
 numGod ={
     2:7,
-    3:6,
+    3:20,
 }
 
 
@@ -103,7 +103,7 @@ def ncubeCreateBatch(batch_size):
     y_batch=[]
     for cur_batch in range(batch_size):
         ncube = cube.Cube(order=orderNum)
-        if cur_batch > (batch_size/3.0):
+        if cur_batch > (batch_size/2.0):
             scramble = generateRandomScramble(scramble_size=numGod[orderNum],allowRandomSize=False)
         else:        
             scramble = generateRandomScramble(scramble_size=numGod[orderNum])
@@ -295,9 +295,9 @@ print("CUBENET NEURAL NETWORK (",NETWORK_TYPE,") IS READY. ")
 
 
 # Define the training parameters
-training_epochs = 20
+training_epochs = 40
 training_batches = 100
-batch_size = 100
+batch_size = 500
 # Verification Paramters
 display_step = 1
 test_data_size = 1000
