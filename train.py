@@ -208,19 +208,23 @@ def FFNN(_X, _weights, _biases, _keep_prob):
 #   CONVOLUTIONAL NEURAL NETWORK STFF
 #
 dimOrder = int(len(ncube.constructVectorState(inBits=True))**0.5)
-numConvLayers = 2
+numConvLayers = 4
 cnv = dimOrder // (numConvLayers*2)
 
 if NETWORK_TYPE is 'CNN':
     weights  = {
         'wc1': tf.Variable(tf.truncated_normal([3, 3, 1, 64], stddev=stddev)),
         'wc2': tf.Variable(tf.truncated_normal([3, 3, 64, 128], stddev=stddev)),
-        'wd1': tf.Variable(tf.truncated_normal([cnv*cnv*128, 1024], stddev=stddev)),
+        'wc3': tf.Variable(tf.truncated_normal([3, 3, 128, 256], stddev=stddev)),
+        'wc4': tf.Variable(tf.truncated_normal([3, 3, 256, 512], stddev=stddev)),
+        'wd1': tf.Variable(tf.truncated_normal([cnv*cnv*512, 1024], stddev=stddev)),
         'wd2': tf.Variable(tf.truncated_normal([1024, n_output], stddev=stddev))
     }
     biases   = {
         'bc1': tf.Variable(tf.random_normal([64], stddev=0.1)),
         'bc2': tf.Variable(tf.random_normal([128], stddev=0.1)),
+        'bc3': tf.Variable(tf.random_normal([256], stddev=0.1)),
+        'bc4': tf.Variable(tf.random_normal([512], stddev=0.1)),
         'bd1': tf.Variable(tf.random_normal([1024], stddev=0.1)),
         'bd2': tf.Variable(tf.random_normal([n_output], stddev=0.1))
     }
@@ -243,10 +247,22 @@ def CONV(_input, _w, _b, _keepratio):
     _conv2 = tf.nn.relu(tf.nn.bias_add(_conv2, _b['bc2']))
     _pool2 = tf.nn.max_pool(_conv2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
     _pool_dr2 = tf.nn.dropout(_pool2, _keepratio)
+    # CONV LAYER 3
+    _conv3 = tf.nn.conv2d(_pool_dr2, _w['wc3'], strides=[1,1,1,1], padding='SAME')
+    _mean, _var = tf.nn.moments(_conv3, [0,1,2])
+    _conv3 = tf.nn.batch_normalization(_conv3, _mean, _var, 0, 1, 0.0001)
+    _conv3 = tf.nn.relu(tf.nn.bias_add(_conv3, _b['bc3']))
+    _pool3 = tf.nn.max_pool(_conv3, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+    #_pool_dr3 = tf.nn.dropout(_pool3, _keepratio)
+    # CONV LAYER 4
+    _conv4 = tf.nn.conv2d(_pool3, _w['wc4'], strides=[1,1,1,1], padding='SAME')
+    _mean, _var = tf.nn.moments(_conv4, [0,1,2])
+    _conv4 = tf.nn.batch_normalization(_conv4, _mean, _var, 0, 1, 0.0001)
+    _conv4 = tf.nn.relu(tf.nn.bias_add(_conv4, _b['bc4']))
+    _pool4 = tf.nn.max_pool(_conv4, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+    #_pool_dr4 = tf.nn.dropout(_pool4, _keepratio)
     # VECTORIZE
-    print(_pool_dr2.get_shape())
-    _dense1 = tf.reshape(_pool_dr2, [-1, _w['wd1'].get_shape().as_list()[0]])
-    print(_dense1.get_shape())
+    _dense1 = tf.reshape(_pool4, [-1, _w['wd1'].get_shape().as_list()[0]])
     # FULLY CONNECTED LAYER 1
     _fc1 = tf.nn.relu(tf.add(tf.matmul(_dense1, _w['wd1']), _b['bd1']))
     print(_fc1.get_shape())
@@ -271,13 +287,8 @@ elif NETWORK_TYPE is 'CNN':
 
 # Cost Type
 cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(model, y))
-
 # Optimizer
-if NETWORK_TYPE is 'FNN':
-    optm = tf.train.AdamOptimizer(learning_rate=0.001).minimize(cost)
-else:
-    optm = tf.train.RMSPropOptimizer(0.001,0.9).minimize(cost)
-
+optm = tf.train.AdamOptimizer(learning_rate=0.001).minimize(cost)
 # Correcion
 corr = tf.equal(tf.argmax(model, 1), tf.argmax(y, 1))
 # Accuracy
@@ -301,8 +312,8 @@ display_step = 1
 test_data_size = 1000
 # Solving Paramters
 total_solv_trials = 100
-solvable_limit = 50
-solvable_step = 10
+solvable_limit = 25
+solvable_step = 1000
 
 
 # Create the Saver Object and directory to save in
@@ -327,7 +338,7 @@ for epoch in range(training_epochs):
     # Each Batch is a unique randomly generated sequence
     # from the rubiks cube
     for i in range(training_batches):
-        #print(i)
+        print(i)
         batch_x, batch_y = ncubeCreateBatch(batch_size)
         if NETWORK_TYPE is 'FNN':
             dictTemp = {x: batch_x, y: batch_y, keepratio: 0.6}
