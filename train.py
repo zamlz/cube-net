@@ -329,7 +329,7 @@ for epoch in range(training_epochs):
     # Each Batch is a unique randomly generated sequence
     # from the rubiks cube
     for i in range(training_batches):
-        print(i)
+        #print(i)
         batch_x, batch_y = ncubeCreateBatch(batch_size)
         if NETWORK_TYPE is 'FNN':
             dictTemp = {x: batch_x, y: batch_y, keepratio: 0.6}
