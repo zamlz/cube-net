@@ -18,8 +18,23 @@ import os
 NETWORK_TYPE = 'FNN'
 
 # Create a nxn Cube
-orderNum = 3
+orderNum = 2
 ncube = cube.Cube(order=orderNum)
+
+
+# Define the training parameters
+training_epochs = 40
+training_batches = 100
+batch_size = 500
+
+# Verification Paramters
+display_step = 1
+test_data_size = 1000
+
+# Solving Paramters
+total_solv_trials = 1000
+solvable_limit = 50
+solvable_step = 999999
 
 # Create the inverse Dictionary
 actionInverse = {
@@ -92,7 +107,7 @@ vectorToAction={
 
 # A small collection of gods number
 numGod ={
-    2:7,
+    2:14,
     3:20,
 }
 
@@ -101,34 +116,64 @@ numGod ={
 def ncubeCreateBatch(batch_size):
     x_batch=[]
     y_batch=[]
-    for cur_batch in range(batch_size):
+    scrambles = generateScrambles(scramble_size=batch_size,max_len=numGod[orderNum],token='BALANCED')
+    for scram in scrambles:
         ncube = cube.Cube(order=orderNum)
-        if cur_batch > (batch_size/2.0):
-            scramble = generateRandomScramble(scramble_size=numGod[orderNum],allowRandomSize=False)
-        else:        
-            scramble = generateRandomScramble(scramble_size=numGod[orderNum])
-        for action in scramble:
+        for action in scram:
             ncube.minimalInterpreter(action)
         x_batch.append(ncube.constructVectorState(inBits=True))
-        y_batch.append(actionVector[actionInverse[scramble[-1]]])
-
+        y_batch.append(actionVector[actionInverse[scram[-1]]])
     return np.array(x_batch,dtype='float32'), np.array(y_batch,dtype='float32')
 
 
+# Generates a balanced scrambled dataset
+def generateBalancedScrambles(scramble_size, max_len):
+    scrambles=[]
+    for curScramCount in range(scramble_size):
+        temp =[]
+        while len(temp) <= (curScramCount % max_len):
+            temp.append(random.choice(list(actionVector.keys())))
+            temp = cleanUpScramble(temp)
+        scrambles.append(temp[:])
+    return scrambles
+
+
+# Generate scrambles of fixed size
+def generateFixedScrambles(scramble_size, max_len):
+    scrambles = []
+    for curScramCount in range(scramble_size):
+        temp = []
+        while len(temp) < max_len:
+            temp.append(random.choice(list(actionVector.keys())))
+            temp = cleanUpScramble(temp)
+        scrambles.append(temp[:])
+    return scrambles
+
 # Generates random scramble sequences
-def generateRandomScramble(scramble_size, allowRandomSize=True):
-    scramble = []
-    if allowRandomSize:
-        scramble_size = random.choice(range(scramble_size)) + 1
+def generateRandomScrambles(scramble_size, max_len, random_split=1.0):
+    scrambles = []
+    for curScramCount in range(scramble_size):
+        temp = []
+        if curScramCount < (random_split*scramble_size):
+            tempSize = random.choice(range(max_len))
+        else:
+            tempSize = max_len
+        while len(temp) <= tempSize:
+            temp.append(random.choice(list(actionVector.keys())))
+            temp = cleanUpScramble(temp)
+        scrambles.append(temp[:])
+    return scrambles
+
+# The helper function
+def generateScrambles(scramble_size, max_len, token='BALANCED', random_split=0.5):
+    if token is 'BALANCED':
+        return generateBalancedScrambles(scramble_size, max_len)
+    if token is 'RANDOM':
+        return generateRandomScrambles(scramble_size, max_len, random_split)
+    if token is 'FIXED':
+        return generateFixedScrambles(scramble_size, max_len)
     else:
-        scramble_size = scramble_size
-    for _ in range(scramble_size):
-        scramble.append(random.choice(list(actionVector.keys())))
-    if len(scramble) > 1:
-        scramble = cleanUpScramble(scramble)
-    if scramble == []:
-        scramble.append(random.choice(list(actionVector.keys())))
-    return scramble
+        return []
 
 
 # This cleans up discrepancies in the scramble
@@ -294,19 +339,6 @@ init = tf.initialize_all_variables()
 print("CUBENET NEURAL NETWORK (",NETWORK_TYPE,") IS READY. ")
 
 
-# Define the training parameters
-training_epochs = 40
-training_batches = 100
-batch_size = 500
-# Verification Paramters
-display_step = 1
-test_data_size = 1000
-# Solving Paramters
-total_solv_trials = 100
-solvable_limit = 50
-solvable_step = 5
-
-
 # Create the Saver Object and directory to save in
 saver = tf.train.Saver()
 ckpt_dir = "./ckpt_dir"
@@ -317,6 +349,41 @@ if not os.path.exists(ckpt_dir):
 # Launch the tensorflow session
 sess = tf.Session()
 sess.run(init)
+
+
+def testCube(test_size, token, solv_limit, display_step):
+    solv_count = 0
+    scrambles = generateScrambles(scramble_size=test_size,max_len=numGod[orderNum],token=token)
+    # Go through each scramble
+    for scrIndex in range(test_size):
+        ncube = cube.Cube(order=orderNum)
+        # Actually scramble the cube
+        for action in scrambles[scrIndex]:
+            ncube.minimalInterpreter(action)
+        actionList=[]
+        if (scrIndex+1) % display_step == 0:
+            ncube.displayCube(isColor=True)
+        # Solving phase
+        for _ in range(solv_limit):
+            if ncube.isSolved():
+                solv_count+=1
+                break
+            vectorState = []
+            vectorState.append(ncube.constructVectorState(inBits=True))
+            cubeState = np.array(vectorState, dtype='float32')
+            # Apply the model
+            dictTemp = {x:cubeState, keepratio:1.0}
+            result = sess.run(pred, feed_dict=dictTemp)
+            # Apply the result to the cube and save it
+            actionList.append(vectorToAction[list(result)[0]])
+            ncube.minimalInterpreter(actionList[-1])
+        if (scrIndex+1) % display_step == 0:
+            ncube.displayCube(isColor=True)
+            print("SCRAMBLE: ", scrambles[scrIndex])
+            print("ACTION: ", actionList)
+    print("Test Results (%s): %03d/%03d -> %.3f" % 
+         (token, solv_count, test_size, solv_count/(test_size*1.0)))
+
 
 
 # Start the training
@@ -339,10 +406,6 @@ for epoch in range(training_epochs):
         dictTemp = {x: batch_x, y: batch_y, keepratio: 1.0}
         avg_cost+=sess.run(cost,feed_dict=dictTemp)
     avg_cost = avg_cost / training_batches
-
-    # Save the model on every epoch
-    save_path = saver.save(sess, ckpt_dir+"/model.ckpt")
-    print("Model saved in File : %s" % save_path)
     
     # Display details of the epoch at certain intervals
     if (epoch + 1) % display_step == 0:
@@ -357,57 +420,17 @@ for epoch in range(training_epochs):
         test_acc = sess.run(accr, feed_dict=dictTemp)
         print("Test Accuracy: %.3f" % (test_acc))
         
-        # Solving stats:
-        solv_count = 0  # the amount of correct solves
-        for solv_index in range(total_solv_trials): 
-            ncube = cube.Cube(order=orderNum)
-            
-            # We must generate Larger scrambles here to emulate
-            # a real world scramble
-            if solv_index > (total_solv_trials/3.0):
-                scramble = generateRandomScramble(scramble_size=numGod[orderNum],
-                                                  allowRandomSize=False)
-            else:
-                scramble = generateRandomScramble(scramble_size=numGod[orderNum])
-            for action in scramble:
-                ncube.minimalInterpreter(action)
-            
-            # Display the cetain scrambled cubes
-            if (solv_index+1) % solvable_step == 0:
-                print("Trial: ", solv_index+1)
-                print("Scramble: ", scramble)
-                ncube.displayCube(isColor=True)
-            
-            # Time to test our network
-            actionList = []
-            for i in range(solvable_limit):
-                # If we have solved the puzzle
-                if ncube.isSolved():
-                    solv_count+=1
-                    break
-                # Otherwise, lets apply the predicition of our network
-                # to the model
-                #----------
-                # Get the state of the cube
-                vectorState = []
-                vectorState.append(ncube.constructVectorState(inBits=True))
-                cubeState = np.array(vectorState, dtype='float32')
-                # Apply the model
-                dictTemp = {x:cubeState, keepratio:1.0}
-                result = sess.run(pred, feed_dict=dictTemp)
-                # Apply the result to the cube and save it
-                actionList.append(vectorToAction[list(result)[0]])
-                ncube.minimalInterpreter(actionList[-1])
+        # Solving Stats
+        testCube(total_solv_trials,'BALANCED', solvable_limit, solvable_step)
+        testCube(total_solv_trials,'RANDOM', solvable_limit, solvable_step)
+        testCube(total_solv_trials,'FIXED', solvable_limit, solvable_step)
 
-            # Display certain end states of the cube
-            if (solv_index+1) % solvable_step == 0:
-                print("ActionList: ", actionList)
-                ncube.displayCube(isColor=True)
+        # Save the model on every display stepped epoch
+        save_path = saver.save(sess, ckpt_dir+"/model.ckpt")
+        print("Model saved in File : %s" % save_path)
 
-        # What were the solve results?
-        print("Practical Test: %03d/%03d -> %.3f" % (solv_count, total_solv_trials, solv_count/(total_solv_trials*1.0)))
-    else:
-        print("\nEPOCH: %03d" % (epoch+1))
+
+
 
 # Training has been completed
 print("Optimization Done!")
