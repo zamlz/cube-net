@@ -15,7 +15,7 @@ import numpy as np
 import os
 
 # Possible Values: FNN, CNN, RNN
-NETWORK_TYPE = 'CNN'
+NETWORK_TYPE = 'FNN'
 
 # Create a nxn Cube
 orderNum = 3
@@ -303,8 +303,8 @@ display_step = 1
 test_data_size = 1000
 # Solving Paramters
 total_solv_trials = 100
-solvable_limit = 25
-solvable_step = 1000
+solvable_limit = 50
+solvable_step = 5
 
 
 # Create the Saver Object and directory to save in
@@ -374,7 +374,7 @@ for epoch in range(training_epochs):
             
             # Display the cetain scrambled cubes
             if (solv_index+1) % solvable_step == 0:
-                print("Trial: ", solv_index)
+                print("Trial: ", solv_index+1)
                 print("Scramble: ", scramble)
                 ncube.displayCube(isColor=True)
             
