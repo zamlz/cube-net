@@ -171,27 +171,26 @@ n_output = 12     # There are only 12 possible actions.
 x = tf.placeholder("float", [None, n_input])
 y = tf.placeholder("float", [None, n_output])
 keepratio = tf.placeholder(tf.float32)
-p_keep_conv = tf.placeholder(tf.float32)
-p_keep_hidden = tf.placeholder(tf.float32)
+stddev = 0.05
 
 
 #
 #   FEED FORWARD STUFF TYPICAL NEURAL NETWORK
 #
 # network Parameters For 
-stddev = 0.05
-weights = {
-    'h1': tf.Variable(tf.random_normal([n_input, n_hidden_1], stddev=stddev)),
-    'h2': tf.Variable(tf.random_normal([n_hidden_1, n_hidden_2], stddev=stddev)),
-    'h3': tf.Variable(tf.random_normal([n_hidden_2, n_hidden_3], stddev=stddev)),
-    'out': tf.Variable(tf.random_normal([n_hidden_3, n_output], stddev=stddev))
-}
-biases = {
-    'b1': tf.Variable(tf.random_normal([n_hidden_1])),
-    'b2': tf.Variable(tf.random_normal([n_hidden_2])),
-    'b3': tf.Variable(tf.random_normal([n_hidden_3])),
-    'out': tf.Variable(tf.random_normal([n_output]))
-}
+if NETWORK_TYPE is 'FNN':
+    weights = {
+        'h1': tf.Variable(tf.random_normal([n_input, n_hidden_1], stddev=stddev)),
+        'h2': tf.Variable(tf.random_normal([n_hidden_1, n_hidden_2], stddev=stddev)),
+        'h3': tf.Variable(tf.random_normal([n_hidden_2, n_hidden_3], stddev=stddev)),
+        'out': tf.Variable(tf.random_normal([n_hidden_3, n_output], stddev=stddev))
+    }
+    biases = {
+        'b1': tf.Variable(tf.random_normal([n_hidden_1])),
+        'b2': tf.Variable(tf.random_normal([n_hidden_2])),
+        'b3': tf.Variable(tf.random_normal([n_hidden_3])),
+        'out': tf.Variable(tf.random_normal([n_output]))
+    }
 
 
 # Create the network
@@ -208,47 +207,58 @@ def FFNN(_X, _weights, _biases, _keep_prob):
 #
 #   CONVOLUTIONAL NEURAL NETWORK STFF
 #
+dimOrder = int(len(ncube.constructVectorState(inBits=True))**0.5)
+numConvLayers = 2
+cnv = dimOrder // (numConvLayers*2)
 
-weights_cnn  = {
-    'wc1': tf.Variable(tf.truncated_normal([3, 3, 1, 32], stddev=0.1)),
-    'wc2': tf.Variable(tf.truncated_normal([3, 3, 32, 64], stddev=0.1)),
-    'wc3': tf.Variable(tf.truncated_normal([3, 3, 63, 128 ], stddev=0.1)),
-    'wc4': tf.Variable(tf.truncated_normal([128 * 4*4, 625], stddev=0.1)),
-    'wo' : tf.Variable(tf.truncated_normal([1024, n_output], stddev=0.1))
-}
+if NETWORK_TYPE is 'CNN':
+    weights  = {
+        'wc1': tf.Variable(tf.truncated_normal([3, 3, 1, 64], stddev=stddev)),
+        'wc2': tf.Variable(tf.truncated_normal([3, 3, 64, 128], stddev=stddev)),
+        'wd1': tf.Variable(tf.truncated_normal([cnv*cnv*128, 1024], stddev=stddev)),
+        'wd2': tf.Variable(tf.truncated_normal([1024, n_output], stddev=stddev))
+    }
+    biases   = {
+        'bc1': tf.Variable(tf.random_normal([64], stddev=0.1)),
+        'bc2': tf.Variable(tf.random_normal([128], stddev=0.1)),
+        'bd1': tf.Variable(tf.random_normal([1024], stddev=0.1)),
+        'bd2': tf.Variable(tf.random_normal([n_output], stddev=0.1))
+    }
 
-def CONV(_input, _w, p_keep_conv, p_keep_hidden):
-    X = tf.reshape(_input, shape=[-1, 12, 12, 1])
-    w = _w['wc1']
-    w2 = _w['wc2']
-    w3 = _w['wc3']
-    w4 = _w['wc4']
-    w_o = _w['wo']
 
-    l1a = tf.nn.relu(tf.nn.conv2d(X, w,                       # l1a shape=(?, 12, 12, 32)
-                        strides=[1, 1, 1, 1], padding='SAME'))
-    l1 = tf.nn.max_pool(l1a, ksize=[1, 2, 2, 1],              # l1 shape=(?, 14, 14, 32)
-                        strides=[1, 2, 2, 1], padding='SAME')
-    l1 = tf.nn.dropout(l1, p_keep_conv)
-
-    l2a = tf.nn.relu(tf.nn.conv2d(l1, w2,                     # l2a shape=(?, 14, 14, 64)
-                        strides=[1, 1, 1, 1], padding='SAME'))
-    l2 = tf.nn.max_pool(l2a, ksize=[1, 2, 2, 1],              # l2 shape=(?, 7, 7, 64)
-                        strides=[1, 2, 2, 1], padding='SAME')
-    l2 = tf.nn.dropout(l2, p_keep_conv)
-
-    l3a = tf.nn.relu(tf.nn.conv2d(l2, w3,                     # l3a shape=(?, 7, 7, 128)
-                        strides=[1, 1, 1, 1], padding='SAME'))
-    l3 = tf.nn.max_pool(l3a, ksize=[1, 2, 2, 1],              # l3 shape=(?, 4, 4, 128)
-                        strides=[1, 2, 2, 1], padding='SAME')
-    l3 = tf.reshape(l3, [-1, w4.get_shape().as_list()[0]])    # reshape to (?, 2048)
-    l3 = tf.nn.dropout(l3, p_keep_conv)
-
-    l4 = tf.nn.relu(tf.matmul(l3, w4))
-    l4 = tf.nn.dropout(l4, p_keep_hidden)
-
-    pyx = tf.matmul(l4, w_o)
-    return pyx 
+def CONV(_input, _w, _b, _keepratio):
+    # INPUT
+    _input_r = tf.reshape(_input, shape=[-1, dimOrder, dimOrder, 1])
+    # CONV LAYER 1
+    _conv1 = tf.nn.conv2d(_input_r, _w['wc1'], strides=[1, 1, 1, 1], padding='SAME')
+    _mean, _var = tf.nn.moments(_conv1, [0, 1, 2])
+    _conv1 = tf.nn.batch_normalization(_conv1, _mean, _var, 0, 1, 0.0001)
+    _conv1 = tf.nn.relu(tf.nn.bias_add(_conv1, _b['bc1']))
+    _pool1 = tf.nn.max_pool(_conv1, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+    _pool_dr1 = tf.nn.dropout(_pool1, _keepratio)
+    # CONV LAYER 2
+    _conv2 = tf.nn.conv2d(_pool_dr1, _w['wc2'], strides=[1, 1, 1, 1], padding='SAME')
+    _mean, _var = tf.nn.moments(_conv2, [0, 1, 2])
+    _conv2 = tf.nn.batch_normalization(_conv2, _mean, _var, 0, 1, 0.0001)
+    _conv2 = tf.nn.relu(tf.nn.bias_add(_conv2, _b['bc2']))
+    _pool2 = tf.nn.max_pool(_conv2, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+    _pool_dr2 = tf.nn.dropout(_pool2, _keepratio)
+    # VECTORIZE
+    print(_pool_dr2.get_shape())
+    _dense1 = tf.reshape(_pool_dr2, [-1, _w['wd1'].get_shape().as_list()[0]])
+    print(_dense1.get_shape())
+    # FULLY CONNECTED LAYER 1
+    _fc1 = tf.nn.relu(tf.add(tf.matmul(_dense1, _w['wd1']), _b['bd1']))
+    print(_fc1.get_shape())
+    _fc_dr1 = tf.nn.dropout(_fc1, _keepratio)
+    # FULLY CONNECTED LAYER 2
+    _out = tf.add(tf.matmul(_fc_dr1, _w['wd2']), _b['bd2'])
+    # RETURN
+    out = { 'input_r': _input_r, 'conv1': _conv1, 'pool1': _pool1, 'pool1_dr1': _pool_dr1,
+        'conv2': _conv2, 'pool2': _pool2, 'pool_dr2': _pool_dr2, 'dense1': _dense1,
+        'fc1': _fc1, 'fc_dr1': _fc_dr1, 'out': _out
+    }
+    return out['out']
 
 
 # Lets party
@@ -257,7 +267,7 @@ def CONV(_input, _w, p_keep_conv, p_keep_hidden):
 if NETWORK_TYPE is 'FNN':
     model = FFNN(x, weights, biases, keepratio)
 elif NETWORK_TYPE is 'CNN':
-    model = CONV(x, weights_cnn, p_keep_conv, p_keep_hidden)
+    model = CONV(x, weights, biases, keepratio)
 
 # Cost Type
 cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(model, y))
@@ -303,10 +313,7 @@ if not os.path.exists(ckpt_dir):
 
 
 # Launch the tensorflow session
-if NETWORK_TYPE is 'FNN':
-    sess = tf.Session()
-elif NETWORK_TYPE is 'CNN':
-    sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+sess = tf.Session()
 sess.run(init)
 
 
@@ -325,12 +332,9 @@ for epoch in range(training_epochs):
         if NETWORK_TYPE is 'FNN':
             dictTemp = {x: batch_x, y: batch_y, keepratio: 0.6}
         elif NETWORK_TYPE is 'CNN':
-            dictTemp = {x:batch_x, y:batch_y, p_keep_conv:0.8, p_keep_hidden:0.5}
+            dictTemp = {x:batch_x, y:batch_y, keepratio: 0.7}
         sess.run(optm, feed_dict=dictTemp)
-        if NETWORK_TYPE is 'FNN':
-            dictTemp = {x: batch_x, y: batch_y, keepratio: 1.0}
-        elif NETWORK_TYPE is 'CNN':
-            dictTemp = {x:batch_x, y:batch_y, p_keep_conv:1.0, p_keep_hidden:1.0}
+        dictTemp = {x: batch_x, y: batch_y, keepratio: 1.0}
         avg_cost+=sess.run(cost,feed_dict=dictTemp)
     avg_cost = avg_cost / training_batches
 
@@ -345,10 +349,7 @@ for epoch in range(training_epochs):
         
         # Test Data Stats
         test_x, test_y = ncubeCreateBatch(test_data_size)
-        if NETWORK_TYPE is 'FNN':
-            dictTemp = {x: test_x, y: test_y, keepratio: 1.0}
-        elif NETWORK_TYPE is 'CNN':
-            dictTemp = {x:test_x, y:test_y, p_keep_conv:1.0, p_keep_hidden:1.0}
+        dictTemp = {x: test_x, y: test_y, keepratio: 1.0}
         test_acc = sess.run(accr, feed_dict=dictTemp)
         print("Test Accuracy: %.3f" % (test_acc))
         
@@ -388,10 +389,7 @@ for epoch in range(training_epochs):
                 vectorState.append(ncube.constructVectorState(inBits=True))
                 cubeState = np.array(vectorState, dtype='float32')
                 # Apply the model
-                if NETWORK_TYPE is 'FNN':
-                    dictTemp = {x:cubeState, keepratio:1.0}
-                elif NETWORK_TYPE is 'CNN':
-                    dictTemp = {x:cubeState, p_keep_conv:1.0, p_keep_hidden:1.0}
+                dictTemp = {x:cubeState, keepratio:1.0}
                 result = sess.run(pred, feed_dict=dictTemp)
                 # Apply the result to the cube and save it
                 actionList.append(vectorToAction[list(result)[0]])
