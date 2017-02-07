@@ -18,7 +18,7 @@ import os
 NETWORK_TYPE = 'CNN'
 
 # Create a nxn Cube
-orderNum = 2
+orderNum = 3
 ncube = cube.Cube(order=orderNum)
 
 # Create the inverse Dictionary
@@ -93,7 +93,7 @@ vectorToAction={
 # A small collection of gods number
 numGod ={
     2:7,
-    3:20,
+    3:6,
 }
 
 

@@ -312,32 +312,36 @@ class Cube:
 
     def constructVectorState(self, inBits=False):
         vector = []
-        tileDict = {}
+        tileDictOrdTwo = {}
         faces = [self.front, self.back, self.right, self.left, self.up, self.down]
         bitValue = 1
         for face in faces:
             for faceRow in face:
                 for faceTile in faceRow:
                     if inBits:
-                        if faceTile in list(tileDict.keys()):
-                            vector.extend(tileDict[faceTile])
+                        # If order two, we use relative bit coloring
+                        if self.order is 2:
+                            if faceTile in list(tileDictOrdTwo.keys()):
+                                vector.extend(tileDictOrdTwo[faceTile])
+                            else:
+                                temp = []
+                                if 32 & bitValue: temp.append(1) 
+                                else: temp.append(0)
+                                if 16 & bitValue: temp.append(1) 
+                                else: temp.append(0)
+                                if 8 & bitValue: temp.append(1) 
+                                else: temp.append(0)
+                                if 4 & bitValue: temp.append(1) 
+                                else: temp.append(0)
+                                if 2 & bitValue: temp.append(1) 
+                                else: temp.append(0)
+                                if 1 & bitValue: temp.append(1) 
+                                else: temp.append(0)
+                                bitValue*=2
+                                tileDictOrdTwo[faceTile] = temp
+                                vector.extend(temp)
                         else:
-                            temp = []
-                            if 32 & bitValue: temp.append(1) 
-                            else: temp.append(0)
-                            if 16 & bitValue: temp.append(1) 
-                            else: temp.append(0)
-                            if 8 & bitValue: temp.append(1) 
-                            else: temp.append(0)
-                            if 4 & bitValue: temp.append(1) 
-                            else: temp.append(0)
-                            if 2 & bitValue: temp.append(1) 
-                            else: temp.append(0)
-                            if 1 & bitValue: temp.append(1) 
-                            else: temp.append(0)
-                            bitValue*=2
-                            tileDict[faceTile] = temp
-                            vector.extend(tileDict[faceTile])
+                            vector.extend(self.tileDict[faceTile])
                     else:
                         vector.append(faceTile.split()[0])
         return vector
