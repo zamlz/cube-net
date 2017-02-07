@@ -340,7 +340,9 @@ for epoch in range(training_epochs):
         avg_cost+=sess.run(cost,feed_dict=dictTemp)
     avg_cost = avg_cost / training_batches
 
-    
+    # Save the model on every epoch
+    save_path = saver.save(sess, ckpt_dir+"/model.ckpt")
+    print("Model saved in File : %s" % save_path)
     
     # Display details of the epoch at certain intervals
     if (epoch + 1) % display_step == 0:
@@ -406,11 +408,6 @@ for epoch in range(training_epochs):
         print("Practical Test: %03d/%03d -> %.3f" % (solv_count, total_solv_trials, solv_count/(total_solv_trials*1.0)))
     else:
         print("\nEPOCH: %03d" % (epoch+1))
-
-# Save the model
-save_path = saver.save(sess, ckpt_dir+"/model.ckpt")
-print("Model saved in File : %s" % save_path)
-
 
 # Training has been completed
 print("Optimization Done!")
