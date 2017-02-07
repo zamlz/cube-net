@@ -289,7 +289,7 @@ pred = tf.argmax(model, 1)
 # Initialize everything up to this point
 init = tf.initialize_all_variables()
 #init = tf.global_variables_initializer()
-print("CUBENET NEURAL NETWORK IS READY.")
+print("CUBENET NEURAL NETWORK (",NETWORK_TYPE,") IS READY. ")
 
 
 # Define the training parameters
