@@ -13,9 +13,11 @@ import random
 import tensorflow as tf
 import numpy as np 
 import os
+import cubeTrain as ct
 
-# Possible Values: FNN, CNN, RNN
-NETWORK_TYPE = 'FNN'
+# Possible Values: FNN, CNN, RNN, MLN
+NETWORK_TYPE = 'MLN'
+DEPTH = 6
 
 # Create a nxn Cube
 orderNum = 2
@@ -23,7 +25,7 @@ ncube = cube.Cube(order=orderNum)
 
 
 # Define the training parameters
-training_epochs = 40
+training_epochs = 20
 training_batches = 100
 batch_size = 500
 
@@ -36,174 +38,6 @@ total_solv_trials = 1000
 solvable_limit = 50
 solvable_step = 999999
 
-# Create the inverse Dictionary
-actionInverse = {
-    'r' : '.r',
-    'l' : '.l',
-    'u' : '.u',
-    'd' : '.d',
-    'f' : '.f',
-    'b' : '.b',
-    '.r': 'r',
-    '.l': 'l',
-    '.u': 'u',
-    '.d': 'd',
-    '.f': 'f',
-    '.b': 'b',
-}
-
-# These are actions that when paired,
-# will simply lead to the same state that
-# they were in before the pair
-# THIS IS ONLY TRUE FOR ORDER=2
-actionAnti = {
-    'r' : '.l',
-    'l' : '.r',
-    'u' : '.d',
-    'd' : '.u',
-    'f' : '.b',
-    'b' : '.f',
-    '.r': 'l',
-    '.l': 'r',
-    '.u': 'd',
-    '.d': 'u',
-    '.f': 'b',
-    '.b': 'f',
-}
-
-# This the actions mapped to their
-# Vectorized outputs
-actionVector={
-    'r' : [1,0,0,0,0,0,0,0,0,0,0,0],
-    'l' : [0,1,0,0,0,0,0,0,0,0,0,0],
-    'u' : [0,0,1,0,0,0,0,0,0,0,0,0],
-    'd' : [0,0,0,1,0,0,0,0,0,0,0,0],
-    'f' : [0,0,0,0,1,0,0,0,0,0,0,0],
-    'b' : [0,0,0,0,0,1,0,0,0,0,0,0],
-    '.r': [0,0,0,0,0,0,1,0,0,0,0,0],
-    '.l': [0,0,0,0,0,0,0,1,0,0,0,0],
-    '.u': [0,0,0,0,0,0,0,0,1,0,0,0],
-    '.d': [0,0,0,0,0,0,0,0,0,1,0,0],
-    '.f': [0,0,0,0,0,0,0,0,0,0,1,0],
-    '.b': [0,0,0,0,0,0,0,0,0,0,0,1],
-}
-
-# Given an output vector, you can
-# find the corresponding action
-vectorToAction={
-    0  : 'r',
-    1  : 'l',
-    2  : 'u',
-    3  : 'd',
-    4  : 'f',
-    5  : 'b',
-    6  : '.r',
-    7  : '.l',
-    8  : '.u',
-    9  : '.d',
-    10 : '.f',
-    11 : '.b',
-}
-
-# A small collection of gods number
-numGod ={
-    2:14,
-    3:20,
-}
-
-
-# Creates a batched dataset
-def ncubeCreateBatch(batch_size):
-    x_batch=[]
-    y_batch=[]
-    scrambles = generateScrambles(scramble_size=batch_size,max_len=numGod[orderNum],token='BALANCED')
-    for scram in scrambles:
-        ncube = cube.Cube(order=orderNum)
-        for action in scram:
-            ncube.minimalInterpreter(action)
-        x_batch.append(ncube.constructVectorState(inBits=True))
-        y_batch.append(actionVector[actionInverse[scram[-1]]])
-    return np.array(x_batch,dtype='float32'), np.array(y_batch,dtype='float32')
-
-
-# Generates a balanced scrambled dataset
-def generateBalancedScrambles(scramble_size, max_len):
-    scrambles=[]
-    for curScramCount in range(scramble_size):
-        temp =[]
-        while len(temp) <= (curScramCount % max_len):
-            temp.append(random.choice(list(actionVector.keys())))
-            temp = cleanUpScramble(temp)
-        scrambles.append(temp[:])
-    return scrambles
-
-
-# Generate scrambles of fixed size
-def generateFixedScrambles(scramble_size, max_len):
-    scrambles = []
-    for curScramCount in range(scramble_size):
-        temp = []
-        while len(temp) < max_len:
-            temp.append(random.choice(list(actionVector.keys())))
-            temp = cleanUpScramble(temp)
-        scrambles.append(temp[:])
-    return scrambles
-
-# Generates random scramble sequences
-def generateRandomScrambles(scramble_size, max_len, random_split=1.0):
-    scrambles = []
-    for curScramCount in range(scramble_size):
-        temp = []
-        if curScramCount < (random_split*scramble_size):
-            tempSize = random.choice(range(max_len))
-        else:
-            tempSize = max_len
-        while len(temp) <= tempSize:
-            temp.append(random.choice(list(actionVector.keys())))
-            temp = cleanUpScramble(temp)
-        scrambles.append(temp[:])
-    return scrambles
-
-# The helper function
-def generateScrambles(scramble_size, max_len, token='BALANCED', random_split=0.5):
-    if token is 'BALANCED':
-        return generateBalancedScrambles(scramble_size, max_len)
-    if token is 'RANDOM':
-        return generateRandomScrambles(scramble_size, max_len, random_split)
-    if token is 'FIXED':
-        return generateFixedScrambles(scramble_size, max_len)
-    else:
-        return []
-
-
-# This cleans up discrepancies in the scramble
-# such as doing r and then r', it doesn't lead
-# anywhere, we simply wish to avoid teaching
-# that to the neural network
-def cleanUpScramble(scramble):
-    i = 0
-    while i < (len(scramble) - 1):
-        if actionInverse[scramble[i]] == scramble[i+1]:
-            del(scramble[i+1])
-        else:
-            i+=1
-    if orderNum == 2:
-        return cleanUpScrambleOrderTwo(scramble)
-    return scramble
-
-# This cleans up the anti actions I mentioned
-# earlier. Take a look at the comment about
-# it above (actionAnti Dictionary Defin.)
-def cleanUpScrambleOrderTwo(scramble):
-    i = 0
-    while i < (len(scramble) - 1):
-        if actionAnti[scramble[i]] == scramble[i+1]:
-            del(scramble[i+1])
-        else:
-            i+=1
-    return scramble
-
-
 # Define Network Topolgy
 n_input = len(ncube.constructVectorState(inBits=True))
 n_hidden_1 = 1024
@@ -211,12 +45,52 @@ n_hidden_2 = 512
 n_hidden_3 = 256
 n_output = 12     # There are only 12 possible actions.
 
+# Define the layers of the MLN
+mln_layers = 8
+mln_info =[n_input] + [128]*mln_layers + [n_output]
+
 
 # Create the input and output variables
 x = tf.placeholder("float", [None, n_input])
 y = tf.placeholder("float", [None, n_output])
 keepratio = tf.placeholder(tf.float32)
 stddev = 0.05
+
+#
+#   MULTILAYER NEURAL NETWORK STUFF
+#
+weights = {}
+biases = {}
+
+def initWeight(shape, stddev):
+    return tf.Variable(tf.random_normal(shape,stddev=stddev))
+
+def initBias(shape):
+    return tf.Variable(tf.random_normal(shape))
+
+def initLayer(x, w, b):
+    lxw = tf.matmul(x, w)
+    lb  = tf.add(lxw, b)
+    lr  = tf.nn.relu(lb)
+    return lr
+
+def finalLayer(x, w, b, keep_prob):
+    ld = tf.nn.dropout(x, keep_prob)
+    lxw =tf.matmul(ld, w)
+    lb = tf.add(lxw, b)
+    return lb
+
+def generateMLN(X, keep_prob, mlnInfo):
+    for i in range(1,len(mlnInfo)):
+        weights[i] = initWeight([mlnInfo[i-1], mlnInfo[i]],0.05)
+        biases[i]  = initBias([mlnInfo[i]])
+    layers = [X]
+    i = 1
+    for _ in range(1, len(mlnInfo)-1):
+        layers.append(initLayer(layers[i-1], weights[i], biases[i]))
+        i+=1
+    layers.append(finalLayer(layers[i-1],weights[i], biases[i], keep_prob))
+    return layers[-1]
 
 
 #
@@ -320,6 +194,8 @@ if NETWORK_TYPE is 'FNN':
     model = FFNN(x, weights, biases, keepratio)
 elif NETWORK_TYPE is 'CNN':
     model = CONV(x, weights, biases, keepratio)
+elif NETWORK_TYPE is 'MLN':
+    model = generateMLN(x, keepratio, mln_info)
 
 # Cost Type
 cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(model, y))
@@ -353,7 +229,8 @@ sess.run(init)
 
 def testCube(test_size, token, solv_limit, display_step):
     solv_count = 0
-    scrambles = generateScrambles(scramble_size=test_size,max_len=numGod[orderNum],token=token)
+    scrambles = ct.generateScrambles(scramble_size=test_size,
+        max_len=DEPTH, token=token, orderNum=2)
     # Go through each scramble
     for scrIndex in range(test_size):
         ncube = cube.Cube(order=orderNum)
@@ -375,7 +252,7 @@ def testCube(test_size, token, solv_limit, display_step):
             dictTemp = {x:cubeState, keepratio:1.0}
             result = sess.run(pred, feed_dict=dictTemp)
             # Apply the result to the cube and save it
-            actionList.append(vectorToAction[list(result)[0]])
+            actionList.append(ct.vectorToAction[list(result)[0]])
             ncube.minimalInterpreter(actionList[-1])
         if (scrIndex+1) % display_step == 0:
             ncube.displayCube(isColor=True)
@@ -396,12 +273,9 @@ for epoch in range(training_epochs):
     # Each Batch is a unique randomly generated sequence
     # from the rubiks cube
     for i in range(training_batches):
-        #print(i)
-        batch_x, batch_y = ncubeCreateBatch(batch_size)
-        if NETWORK_TYPE is 'FNN':
-            dictTemp = {x: batch_x, y: batch_y, keepratio: 0.6}
-        elif NETWORK_TYPE is 'CNN':
-            dictTemp = {x:batch_x, y:batch_y, keepratio: 0.7}
+        print(i)
+        batch_x, batch_y = ct.ncubeCreateBatch(batch_size, DEPTH,orderNum)
+        dictTemp = {x: batch_x, y: batch_y, keepratio: 0.6}
         sess.run(optm, feed_dict=dictTemp)
         dictTemp = {x: batch_x, y: batch_y, keepratio: 1.0}
         avg_cost+=sess.run(cost,feed_dict=dictTemp)
@@ -415,7 +289,7 @@ for epoch in range(training_epochs):
         print("Epoch: %03d/%03d cost: %.9f" % (epoch+1, training_epochs, avg_cost))
         
         # Test Data Stats
-        test_x, test_y = ncubeCreateBatch(test_data_size)
+        test_x, test_y = ct.ncubeCreateBatch(test_data_size, DEPTH, orderNum)
         dictTemp = {x: test_x, y: test_y, keepratio: 1.0}
         test_acc = sess.run(accr, feed_dict=dictTemp)
         print("Test Accuracy: %.3f" % (test_acc))

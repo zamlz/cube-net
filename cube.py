@@ -21,11 +21,15 @@ import os
 from math import ceil
 from termcolor import colored
 
-
+# This is the cube class. It can generalize
+# and create any N-Order puzzle Cube.
 class Cube:    
 
+    # These are just the characters
+    # that get colored when displaying the cube
     tileChar     ='   '
     tileCharReal =' + '
+    # Tile -> Color
     colorDict = {
         ' W ' : 'white',
         ' G ' : 'green',
@@ -34,6 +38,7 @@ class Cube:
         ' O ' : 'magenta',
         ' Y ' : 'yellow',
     }
+    # Face Character -> Face Name
     faceDict = {
         'f' : 'Front',
         'r' : 'Right',
@@ -42,6 +47,11 @@ class Cube:
         'd' : 'Down',
         'b' : 'Back',
     }
+    # Tile -> Vector Representation
+    # (Used for order >= 3)
+    # (2x2x2 uses relative bit
+    # generation to create simpler
+    # datasets.)
     tileDict = {
         ' R ' : [0,0,1],
         ' O ' : [0,1,0],
@@ -51,6 +61,7 @@ class Cube:
         ' W ' : [1,1,0],
     }
 
+    # Define all the faces.
     def __init__(self, order):
         self.order  = order
         self.front  = [[ ' W ' for y in range(order)] for x in range(order)]
@@ -60,9 +71,8 @@ class Cube:
         self.right  = [[ ' O ' for y in range(order)] for x in range(order)]
         self.back   = [[ ' Y ' for y in range(order)] for x in range(order)]
 
-    """
-    Displays the ASCII Cube or the Colorized Cube
-    """
+    
+    # Displays the ASCII Cube or the Colorized Cube
     def displayCube(self, isColor=False):
         # Display the Top Portion
         for i in range(self.order):
@@ -102,6 +112,8 @@ class Cube:
         return tile
 
     # takes a face character and rotates it in a given direction
+    # Uses a special algorithm that utilizes O(1) space
+    # and still has O(n^2) runtime. Wanted to try something cool.
     def __rotateFace(self,face='Front',dir='ClkWise',iter=1):
         # Choose the right face for the job
         if   face is 'Front' : tempFace = self.front
@@ -142,7 +154,8 @@ class Cube:
                     tfvec = transformForward(tfvec[0],tfvec[1])
                     tfvec = transformSkew(tfvec[0],tfvec[1])
 
-
+    # This simply rotates the whole cube along a specific
+    # Axis.
     def rotateAlongAxis(self, axis, inverse=False):
         forward='ClkWise'
         backward='CntrClkWise'
@@ -208,10 +221,13 @@ class Cube:
         else:
             print("ERROR")
 
+    # This rotates and resolves the layers adjacent
+    # to the front face.
     def __resolveLayersOnlyFront(self, layer, inverse=False):
         N = self.order - 1
-        # Your X Y coordinate naming system is shit
-        # Fix this ASAP
+        # x and y are not like a coordinate system
+        # there are simply i j. so yeah x is vertical
+        # and y is horizontal. But its aightt
         if not inverse    :
             transformForward = lambda x,y: (-y, x)
             transformUpdate  = lambda n,j: (n-j-layer, -j+layer)
@@ -249,8 +265,15 @@ class Cube:
             tempFace_4[i][j] = tempTile
             tfvec = transformForward(tfvec[0], tfvec[1])
 
-        
-
+    # This is a very janky algorithm.
+    # In order to avoid uncessary complication,
+    # to rotate a face, we rotate the whole cube,
+    # until the side we wish to rotate is in the front
+    # By running the generalized rotateFront alg., we
+    # are able to rotate it, we then rotate the whole
+    # back to the initil axis is was given as.
+    # THIS MUST BE CHANGED. THERE MUST BE A BETTER
+    # ALGORITHM FOR THIS.
     def rotateFaceReal(self, face, layer, inverse=False):
         if layer >= self.order:
             print("Layer Value Out of Bounds")
@@ -284,7 +307,12 @@ class Cube:
             self.__resolveLayersOnlyFront(layer, inverse)
             self.rotateAlongAxis(axis='x', inverse=True)
 
-
+    # Takes in an action string and processes it
+    # action-> [r,l,f,b,u,d]
+    # Adding a period in front of a action will
+    # run the inverse.
+    # Adding a number before the action will
+    # result in changing the layer focus.
     def minimalInterpreter(self, cmdString):
         inv = False
         lay = 0
@@ -302,6 +330,7 @@ class Cube:
                 inv = False
                 lay = 0
 
+    # Interactive interpreter for the cube.
     def client(self, isColor=False):
         while True:
             clearScreen()
@@ -310,7 +339,15 @@ class Cube:
             self.minimalInterpreter(userString)
             print(self.constructVectorState(inBits=True)) 
 
-    def constructVectorState(self, inBits=False):
+    # Construct the state of the cube into a vector.
+    # The vectors comes in bit form and/or in letter form.
+    # The letter form is simply just a vector with unique letters
+    # for each color. If it is in bits the behaviour depends on the
+    # order of the vector. If order is 2, then relative color
+    # vectoring is used. This creates the vector dictionary on
+    # the fly, wheras used the aldready stored one.
+    # It is unclear which is better atm.
+    def constructVectorState(self, inBits=False, allowRelative=True):
         vector = []
         tileDictOrdTwo = {}
         faces = [self.front, self.back, self.right, self.left, self.up, self.down]
@@ -320,7 +357,7 @@ class Cube:
                 for faceTile in faceRow:
                     if inBits:
                         # If order two, we use relative bit coloring
-                        if self.order is 2:
+                        if (self.order % 2 == 0) and allowRelative:
                             if faceTile in list(tileDictOrdTwo.keys()):
                                 vector.extend(tileDictOrdTwo[faceTile])
                             else:
@@ -346,8 +383,8 @@ class Cube:
                         vector.append(faceTile.split()[0])
         return vector
 
+    # Given a vector state, arrange the cube to that state.
     def destructVectorState(self, tileVector, inBits=False):
-        count= 0
         faces = [self.front, self.back, self.right, self.left, self.up, self.down]
         #for face in faces:
         for f in range(len(faces)):
@@ -355,6 +392,7 @@ class Cube:
                 for j in range(self.order):
                     faces[f][i][j] = " "+tileVector[f*(self.order**2) + i*self.order + j]+" "
 
+    # Verify If the cube is solved
     def isSolved(self):
         faces = [self.front, self.back, self.right, self.left, self.up, self.down]
         for face in faces:
@@ -365,7 +403,7 @@ class Cube:
         return True
 
 
-
+# A useful clearscreen function
 def clearScreen():
     if os.name == "nt":
         os.system('cls')
@@ -382,6 +420,6 @@ def main():
     cn.client(isColor=True)
     
 
-
+# Start the main program lmoa
 if __name__ == "__main__":
     main()
