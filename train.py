@@ -27,14 +27,14 @@ ncube = cube.Cube(order=orderNum)
 # Define the training parameters
 training_epochs = 20
 training_batches = 100
-batch_size = 500
+batch_size = 5000
 
 # Verification Paramters
 display_step = 1
 test_data_size = 1000
 
 # Solving Paramters
-total_solv_trials = 1000
+total_solv_trials = 100
 solvable_limit = 50
 solvable_step = 999999
 
@@ -46,7 +46,7 @@ n_hidden_3 = 256
 n_output = 12     # There are only 12 possible actions.
 
 # Define the layers of the MLN
-mln_layers = 8
+mln_layers = 16
 mln_info =[n_input] + [128]*mln_layers + [n_output]
 
 
@@ -273,7 +273,7 @@ for epoch in range(training_epochs):
     # Each Batch is a unique randomly generated sequence
     # from the rubiks cube
     for i in range(training_batches):
-        print(i)
+        #print(i)
         batch_x, batch_y = ct.ncubeCreateBatch(batch_size, DEPTH,orderNum)
         dictTemp = {x: batch_x, y: batch_y, keepratio: 0.6}
         sess.run(optm, feed_dict=dictTemp)
@@ -303,7 +303,9 @@ for epoch in range(training_epochs):
         save_path = saver.save(sess, ckpt_dir+"/model.ckpt")
         print("Model saved in File : %s" % save_path)
 
-
+testCube(1000,'BALANCED', solvable_limit, solvable_step)
+testCube(1000,'RANDOM', solvable_limit, solvable_step)
+testCube(1000,'FIXED', solvable_limit, solvable_step)
 
 
 # Training has been completed
