@@ -150,6 +150,7 @@ def generateScrambles(scramble_size, max_len, token='BALANCED', random_split=0.5
     if token is 'FIXED':
         return generateFixedScrambles(scramble_size, max_len, orderNum=orderNum)
     else:
+        print("INVALID SCRAMBLE TOKEN")
         return []
 
 
