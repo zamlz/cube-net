@@ -3,7 +3,7 @@
 # Test MLP
 # ONLY WORKS FOR MLP
 
-print("Start MLP Test")
+print("Start SRNN Test")
 
 import cube
 import random
@@ -15,7 +15,7 @@ from copy import deepcopy
 
 
 # Model path
-mpath='./model_2_2_moves_6_MLN_8L/model.ckpt'
+mpath='./model_2_2_moves_6_SimpleRNN/model.ckpt'
 
 # Various parameters
 DEPTH = 6
@@ -24,15 +24,15 @@ orderNum = 2
 ncube = cube.Cube(order=orderNum)
 
 # Define the layers of the MLN
-n_input = len(ncube.constructVectorState(inBits=True))
+n_input = len(ncube.constructVectorState(inBits=True)) + 12
 n_output = 12
 mln_layers = 8
 mln_info =[n_input] + [128]*mln_layers + [n_output]
 
 # Some display stuff for the command line
-displayStep = 10
-limit = 20
-trials = 10
+displayStep = 1000
+limit = 50
+trials = 10000
 
 
 # Create the input and output variables
@@ -113,9 +113,6 @@ print("MLP Model has been sucessfully restored")
 
 # The testing function for the cube
 def testCube(test_size, token, solv_limit, display_step):
-    print("---------------------------------------------")
-    print(token)
-    print("---------------------------------------------")
     solv_count = 0
     scrambles = ct.generateScrambles(scramble_size=test_size,
         max_len=DEPTH, token=token, orderNum=2)
@@ -129,18 +126,20 @@ def testCube(test_size, token, solv_limit, display_step):
         if (scrIndex+1) % display_step == 0:
             ncube.displayCube(isColor=True)
         # Solving phase
+        lastMove = [0,0,0,0,0,0,0,0,0,0,0,0]
         for _ in range(solv_limit):
             if ncube.isSolved():
                 solv_count+=1
                 break
             vectorState = []
-            vectorState.append(ncube.constructVectorState(inBits=True))
+            vectorState.append(ncube.constructVectorState(inBits=True)+lastMove)
             cubeState = np.array(vectorState, dtype='float32')
             # Apply the model
             dictTemp = {x:cubeState, keepratio:1.0}
             result = sess.run(pred, feed_dict=dictTemp)
             # Apply the result to the cube and save it
             actionList.append(ct.indexToAction[list(result)[0]])
+            lastMove = ct.indexToVector[list(result)[0]]
             ncube.minimalInterpreter(actionList[-1])
         if (scrIndex+1) % display_step == 0:
             ncube.displayCube(isColor=True)
@@ -148,6 +147,7 @@ def testCube(test_size, token, solv_limit, display_step):
             print("ACTION: ", actionList)
     return ("Test Results (%s): %03d/%03d -> %.3f" % 
          (token, solv_count, test_size, solv_count/(test_size*1.0)))
+
 
 def testCubeBFS(test_size, token, solv_limit, display_step):
     print("---------------------------------------------")
@@ -212,7 +212,7 @@ temp = ""
 temp += testCube(trials,'BALANCED', limit, displayStep) + "\n"
 temp += testCube(trials,'FIXED', limit, displayStep) + "\n\n"
 
-temp += testCubeBFS(trials,'BALANCED', limit, displayStep) + "\n"
-temp += testCubeBFS(trials,'FIXED', limit, displayStep) + "\n"
+#temp += testCubeBFS(trials,'BALANCED', limit, displayStep) + "\n"
+#temp += testCubeBFS(trials,'FIXED', limit, displayStep) + "\n"
 
 print(temp)

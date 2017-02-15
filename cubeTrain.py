@@ -28,6 +28,7 @@ actionInverse = {
     '.d': 'd',
     '.f': 'f',
     '.b': 'b',
+    ' ' : ' ',
 }
 
 # These are actions that when paired,
@@ -64,11 +65,28 @@ actionVector={
     '.d': [0,0,0,0,0,0,0,0,0,1,0,0],
     '.f': [0,0,0,0,0,0,0,0,0,0,1,0],
     '.b': [0,0,0,0,0,0,0,0,0,0,0,1],
+    ' ' : [0,0,0,0,0,0,0,0,0,0,0,0],
+}
+
+# Given an index, produce an output vector
+indexToVector={
+    0  : [1,0,0,0,0,0,0,0,0,0,0,0],
+    1  : [0,1,0,0,0,0,0,0,0,0,0,0],
+    2  : [0,0,1,0,0,0,0,0,0,0,0,0],
+    3  : [0,0,0,1,0,0,0,0,0,0,0,0],
+    4  : [0,0,0,0,1,0,0,0,0,0,0,0],
+    5  : [0,0,0,0,0,1,0,0,0,0,0,0],
+    6  : [0,0,0,0,0,0,1,0,0,0,0,0],
+    7  : [0,0,0,0,0,0,0,1,0,0,0,0],
+    8  : [0,0,0,0,0,0,0,0,1,0,0,0],
+    9  : [0,0,0,0,0,0,0,0,0,1,0,0],
+    10 : [0,0,0,0,0,0,0,0,0,0,1,0],
+    11 : [0,0,0,0,0,0,0,0,0,0,0,1],
 }
 
 # Given an output vector, you can
 # find the corresponding action
-vectorToAction={
+indexToAction={
     0  : 'r',
     1  : 'l',
     2  : 'u',
@@ -90,7 +108,7 @@ numGod = {
 }
 
 # Creates a batched dataset
-def ncubeCreateBatch(batch_size, depth, orderNum):
+def ncubeCreateBatchMLN(batch_size, depth, orderNum):
     x_batch=[]
     y_batch=[]
     scrambles = generateScrambles(scramble_size=batch_size,max_len=depth,token='BALANCED', orderNum=orderNum)
@@ -103,13 +121,34 @@ def ncubeCreateBatch(batch_size, depth, orderNum):
     return np.array(x_batch,dtype='float32'), np.array(y_batch,dtype='float32')
 
 
+# Generate Random Sized Scrambles from a fixed scramble size
+def ncubeCreateBatchSRNN(batch_size, depth, orderNum):
+    x_batch=[]
+    y_batch=[]
+    scrambles = generateScrambles(scramble_size=batch_size, max_len=depth,token='FIXED', orderNum=orderNum)
+    for count in range(batch_size):
+        scrambles[count] = scrambles[count] + [' ']
+        ncube = cube.Cube(order=orderNum)
+        mydepth = (count % depth) + 1
+        for i in range(mydepth):
+            ncube.minimalInterpreter(scrambles[count][i])
+        previousMove = actionVector[actionInverse[scrambles[count][mydepth]]]
+        x_batch.append(ncube.constructVectorState(inBits=True)+previousMove)
+        y_batch.append(actionVector[actionInverse[scrambles[count][mydepth-1]]])
+    return np.array(x_batch,dtype='float32'), np.array(y_batch,dtype='float32')
+
+def ncubeCreateBatch(batch_size, depth, orderNum, token='MLN'):
+    if token is 'MLN':
+        return ncubeCreateBatchMLN(batch_size, depth, orderNum)
+    return ncubeCreateBatchSRNN(batch_size, depth, orderNum)
+
 # Generates a balanced scrambled dataset
 def generateBalancedScrambles(scramble_size, max_len, orderNum=2):
     scrambles=[]
     for curScramCount in range(scramble_size):
         temp =[]
         while len(temp) <= (curScramCount % max_len):
-            temp.append(random.choice(list(actionVector.keys())))
+            temp.append(random.choice(list(actionAnti.keys())))
             temp = cleanUpScramble(temp)
         scrambles.append(temp[:])
     return scrambles
@@ -121,7 +160,7 @@ def generateFixedScrambles(scramble_size, max_len, orderNum=2):
     for curScramCount in range(scramble_size):
         temp = []
         while len(temp) < max_len:
-            temp.append(random.choice(list(actionVector.keys())))
+            temp.append(random.choice(list(actionAnti.keys())))
             temp = cleanUpScramble(temp)
         scrambles.append(temp[:])
     return scrambles
@@ -136,7 +175,7 @@ def generateRandomScrambles(scramble_size, max_len, random_split=1.0, orderNum=2
         else:
             tempSize = max_len
         while len(temp) <= tempSize:
-            temp.append(random.choice(list(actionVector.keys())))
+            temp.append(random.choice(list(actionAnti.keys())))
             temp = cleanUpScramble(temp)
         scrambles.append(temp[:])
     return scrambles
