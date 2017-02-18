@@ -226,6 +226,8 @@ if not os.path.exists(ckpt_dir):
 sess = tf.Session()
 sess.run(init)
 
+# Save the logs
+summary_writer = tf.train.SummaryWriter('./ckpt_dir/logs', graph=sess.graph)
 
 def testCube(test_size, token, solv_limit, display_step):
     solv_count = 0

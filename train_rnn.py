@@ -40,9 +40,7 @@ solvable_step = 10
 
 # Define Network Topolgy
 n_input = len(ncube.constructVectorState(inBits=True))
-n_hidden_1 = 1024
-n_hidden_2 = 512
-n_hidden_3 = 256
+n_steps = DEPTH
 n_output = 12     # There are only 12 possible actions.
 if NETWORK_TYPE is 'SRNN':
     n_input += n_output
@@ -53,7 +51,10 @@ mln_info =[n_input] + [128]*mln_layers + [n_output]
 
 
 # Create the input and output variables
-x = tf.placeholder("float", [None, n_input])
+if NETWORK_TYPE is 'SRNN':
+    x = tf.placeholder("float", [None, n_input])
+elif NETWORK_TYPE is 'LSTM':
+    x = tf.placeholder("float", [None, n_steps, n_input])
 y = tf.placeholder("float", [None, n_output])
 keepratio = tf.placeholder(tf.float32)
 stddev = 0.05
@@ -94,6 +95,7 @@ def generateMLN(X, keep_prob, mlnInfo):
     layers.append(finalLayer(layers[i-1],weights[i], biases[i], keep_prob))
     return layers[-1]
 
+def generateLSTM()
 
 # Lets party
 
@@ -130,6 +132,8 @@ if not os.path.exists(ckpt_dir):
 sess = tf.Session()
 sess.run(init)
 
+# Save the logs
+summary_writer = tf.train.SummaryWriter('./ckpt_dir/logs', graph=sess.graph)
 
 def testCube(test_size, token, solv_limit, display_step):
     solv_count = 0
