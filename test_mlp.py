@@ -81,7 +81,7 @@ def generateMLN(X, keep_prob, mlnInfo):
 # Define the model
 model = generateMLN(x, keepratio, mln_info)
 # Cost Type
-cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(model, y))
+cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=model, labels=y))
 # Optimizer
 optm = tf.train.AdamOptimizer(learning_rate=0.001).minimize(cost)
 # Correcion
