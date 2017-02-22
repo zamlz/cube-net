@@ -23,6 +23,7 @@ class Queue:
     return len(self.list) == 0
 
 
+# Make this into A*
 def bfs():
     ncube = cube.Cube(order=3)
     successorActionsNorm=['r','l','f','b','u','d']
