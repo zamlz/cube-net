@@ -16,7 +16,7 @@ depth = 6
 
 
 # Define the training parameters
-training_epochs = 20
+training_epochs = 100
 training_batches = 100
 batch_size = 5000
 
@@ -42,11 +42,21 @@ model.add(LSTM(128, stateful=True,
 #					batch_input_shape=(batch_size, 1, 128)))
 #model.add(LSTM(128, stateful=True, 
 #					batch_input_shape=(batch_size, 1, 128)))
+model.add(Dense(128, batch_input_shape=(batch_size, 1, 128),
+					 activation='relu'))
+model.add(Dense(128, batch_input_shape=(batch_size, 1, 128),
+					 activation='relu'))
+model.add(Dense(128, batch_input_shape=(batch_size, 1, 128),
+					 activation='relu'))
+model.add(Dense(128, batch_input_shape=(batch_size, 1, 128),
+					 activation='relu'))
+model.add(Dense(128, batch_input_shape=(batch_size, 1, 128),
+					 activation='relu'))
 model.add(Dense(128, batch_input_shape=(batch_size, 1, 12),
-					 activation='softmax'))
-model.add(Dense(n_output, activation='softmax'))
-model.compile(optimizer='rmsprop',
-              loss='categorical_crossentropy',
+					 activation='relu'))
+model.add(Dense(n_output, activation='relu'))
+model.compile(optimizer='adam',
+              loss='mean_squared_error',
               metrics=['accuracy'])
 
 # Print a summary of the model
@@ -66,14 +76,29 @@ def testCube(test_size, token, solv_limit, display_step):
 		for action in scram:
 			ncube.minimalInterpreter(action)
 		actionList = []
+		model.reset_states()
 		ncube.displayCube(isColor=True)
 		for _ in range(solv_limit):
 			if ncube.isSolved():
 				solv_count+=1
+				print("Solved!")
 				break
-			vectorState = np.array([[ncube.constructVectorState(inBits=True)]], dtype='float32')
-			action = model.predict(vectorState, batch_size=1)
-			print(action)
+			vectorState = np.array([[ncube.constructVectorState(inBits=True)]]*batch_size, dtype='float32')
+			# print(vectorState.shape)
+			action = model.predict(vectorState, batch_size=batch_size, verbose=0)
+			# print(action[0].shape)
+			action = action[0]
+			# print(action)
+			action = np.argmax(action)
+			# print(action)
+			action = ct.indexToAction[action]
+			ncube.minimalInterpreter(action)
+			actionList.append(action)
+		ncube.displayCube(isColor=True)
+		print(scram)
+		print(actionList)
+		
+
 
 
 # Start training
@@ -81,12 +106,20 @@ for epoch in range(training_epochs):
 
 	print("\n"+("-"*20))
 	print("EPOCH: "+str(epoch))
-	# Get the batch
-	xb, yb = ct.ncubeCreateBatchLSTM(batch_size, depth, orderNum)		
-	
-	for timestep in range(depth):
-		xbi = xb[:,timestep:timestep+1,:]
-		ybi = yb[:,timestep,:]
-		model.train_on_batch(xbi, ybi)
-	model.reset_states()
-testCube(1,'FIXED',20,1)
+	for _ in range(training_batches)
+		# Get the batch
+		xb, yb = ct.ncubeCreateBatchLSTM(batch_size, depth, orderNum)		
+		for timestep in range(depth):
+			xbi = xb[:,timestep:timestep+1,:]
+			ybi = yb[:,timestep,:]
+			
+			#print(xb.shape)
+			#print(xbi.shape)
+
+			model.fit(xbi, ybi, nb_epoch=1, batch_size=batch_size, shuffle=False)
+		model.reset_states()
+	for i in range(10):
+		print("TEST: "+str(i))
+		testCube(1,'FIXED',20,1)
+		model.reset_states()
+		print("-"*20)
