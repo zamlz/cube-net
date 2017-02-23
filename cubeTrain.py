@@ -121,6 +121,25 @@ def ncubeCreateBatchMLN(batch_size, depth, orderNum):
     return np.array(x_batch,dtype='float32'), np.array(y_batch,dtype='float32')
 
 
+# Create a batched dataset for LSTM
+def ncubeCreateBatchLSTM(batch_size, depth, orderNum):
+    x_batch=[]
+    y_batch=[]
+    scrambles = generateScrambles(scramble_size=batch_size, max_len=depth, token='FIXED', orderNum=orderNum)
+    for scram in scrambles:
+        #print(scram)
+        y_temp = []
+        x_temp = []
+        ncube = cube.Cube(order=orderNum)
+        for k in scram:
+            ncube.minimalInterpreter(k)
+            x_temp.append(ncube.constructVectorState(inBits=True))
+            y_temp.append(actionVector[actionInverse[k]])
+        x_batch.append(x_temp[:])
+        y_batch.append(y_temp[:])
+    return np.array(x_batch,dtype='float32'), np.array(y_batch,dtype='float32')
+
+
 # Generate Random Sized Scrambles from a fixed scramble size
 def ncubeCreateBatchSRNN(batch_size, depth, orderNum):
     x_batch=[]
