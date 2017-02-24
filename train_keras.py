@@ -106,16 +106,18 @@ for epoch in range(training_epochs):
 
 	print("\n"+("-"*20))
 	print("EPOCH: "+str(epoch))
-	for _ in range(training_batches)
+	for bat in range(training_batches):
 		# Get the batch
 		xb, yb = ct.ncubeCreateBatchLSTM(batch_size, depth, orderNum)		
+		print("\nTrueBatch: "+str(bat+1)+"\n")
 		for timestep in range(depth):
+			
 			xbi = xb[:,timestep:timestep+1,:]
 			ybi = yb[:,timestep,:]
 			
 			#print(xb.shape)
 			#print(xbi.shape)
-
+			print("TimeStep: "+str(timestep+1))
 			model.fit(xbi, ybi, nb_epoch=1, batch_size=batch_size, shuffle=False)
 		model.reset_states()
 	for i in range(10):
