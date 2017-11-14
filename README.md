@@ -1,10 +1,10 @@
-#CubeNet
+# CubeNet
 
 A test of different neural network models to try and solve a 2x2x2 Rubiks Cube using TensorFlow. You can see a couple models have been trained. These can be tested with test_mlp.py.
 
 The basic network learned to solve a Rubiks Cube of scramble length 6 with an accuracy of 47%. By also training the network to learn the previous move made, it was able to improve the accuracy of the network 52%.
 
-####Seen below is the model in action. 
+#### Seen below is the model in action. 
 Here it is attempting to solve a 2x2x2 but takes an interesting route to do so. (test_mlp.py)
 
 ![alt text](https://github.com/zAMLz/CubeNet/blob/master/pics/cube.JPG?raw=true "Here is a picture lol")
